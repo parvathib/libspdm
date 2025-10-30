@@ -48,9 +48,8 @@
      SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_ALIAS_CERT_CAP | \
      SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_CHAL_CAP)
 
-static libspdm_return_t libspdm_requester_get_capabilities_test_send_message(
-    void *spdm_context, size_t request_size, const void *request,
-    uint64_t timeout)
+static libspdm_return_t send_message(
+    void *spdm_context, size_t request_size, const void *request, uint64_t timeout)
 {
     libspdm_test_context_t *spdm_test_context;
 
@@ -132,14 +131,15 @@ static libspdm_return_t libspdm_requester_get_capabilities_test_send_message(
         return LIBSPDM_STATUS_SUCCESS;
     case 0x26:
         return LIBSPDM_STATUS_SUCCESS;
+    case 0x27:
+        return LIBSPDM_STATUS_SUCCESS;
     default:
         return LIBSPDM_STATUS_SEND_FAIL;
     }
 }
 
-static libspdm_return_t libspdm_requester_get_capabilities_test_receive_message(
-    void *spdm_context, size_t *response_size,
-    void **response, uint64_t timeout)
+static libspdm_return_t receive_message(
+    void *spdm_context, size_t *response_size, void **response, uint64_t timeout)
 {
     libspdm_test_context_t *spdm_test_context;
 
@@ -1083,6 +1083,35 @@ static libspdm_return_t libspdm_requester_get_capabilities_test_receive_message(
     }
         return LIBSPDM_STATUS_SUCCESS;
 
+    case 0x27: {
+        spdm_capabilities_response_t *spdm_response;
+        size_t spdm_response_size;
+        size_t transport_header_size;
+
+        spdm_response_size = sizeof(spdm_capabilities_response_t);
+        transport_header_size = LIBSPDM_TEST_TRANSPORT_HEADER_SIZE;
+        spdm_response = (void *)((uint8_t *)*response + transport_header_size);
+
+        libspdm_zero_mem(spdm_response, spdm_response_size);
+        spdm_response->header.spdm_version = SPDM_MESSAGE_VERSION_13;
+        spdm_response->header.request_response_code = SPDM_CAPABILITIES;
+        spdm_response->header.param1 = 0;
+        spdm_response->header.param2 = 0;
+        spdm_response->ct_exponent = LIBSPDM_MAX_CT_EXPONENT;
+        /* CERT_CAP needs to be set if these capabilities are set. */
+        spdm_response->flags = SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_EP_INFO_CAP_SIG |
+                               SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_MULTI_KEY_CAP_ONLY |
+                               SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_GET_KEY_PAIR_INFO_CAP;
+        spdm_response->data_transfer_size = LIBSPDM_DATA_TRANSFER_SIZE;
+        spdm_response->max_spdm_msg_size = LIBSPDM_MAX_SPDM_MSG_SIZE;
+
+        libspdm_transport_test_encode_message(spdm_context, NULL, false,
+                                              false, spdm_response_size,
+                                              spdm_response,
+                                              response_size, response);
+    }
+        return LIBSPDM_STATUS_SUCCESS;
+
     default:
         return LIBSPDM_STATUS_RECEIVE_FAIL;
     }
@@ -1991,9 +2020,34 @@ static void libspdm_test_requester_get_capabilities_err_case40(void **state)
     assert_int_equal(status, LIBSPDM_STATUS_INVALID_MSG_FIELD);
 }
 
-int libspdm_requester_get_capabilities_error_test_main(void)
+/**
+ * Test 41: Responder sets MULTI_KEY_CAP but does not set CERT_CAP.
+ * Expected behavior: returns with status LIBSPDM_STATUS_INVALID_MSG_FIELD.
+ **/
+static void libspdm_test_requester_get_capabilities_err_case41(void **state)
 {
-    const struct CMUnitTest m_spdm_requester_get_capabilities_tests[] = {
+    libspdm_return_t status;
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x27;
+    spdm_context->connection_info.version = SPDM_MESSAGE_VERSION_13 <<
+                                            SPDM_VERSION_NUMBER_SHIFT_BIT;
+    spdm_context->connection_info.connection_state = LIBSPDM_CONNECTION_STATE_AFTER_VERSION;
+
+    spdm_context->local_context.capability.ct_exponent = 0;
+    spdm_context->local_context.capability.flags = LIBSPDM_DEFAULT_CAPABILITY_FLAG;
+
+    status = libspdm_get_capabilities(spdm_context);
+
+    assert_int_equal(status, LIBSPDM_STATUS_INVALID_MSG_FIELD);
+}
+
+int libspdm_req_get_capabilities_error_test(void)
+{
+    const struct CMUnitTest test_cases[] = {
         cmocka_unit_test(libspdm_test_requester_get_capabilities_err_case1),
         cmocka_unit_test(libspdm_test_requester_get_capabilities_err_case2),
         cmocka_unit_test(libspdm_test_requester_get_capabilities_err_case3),
@@ -2034,18 +2088,19 @@ int libspdm_requester_get_capabilities_error_test_main(void)
         cmocka_unit_test(libspdm_test_requester_get_capabilities_err_case38),
         cmocka_unit_test(libspdm_test_requester_get_capabilities_err_case39),
         cmocka_unit_test(libspdm_test_requester_get_capabilities_err_case40),
+        cmocka_unit_test(libspdm_test_requester_get_capabilities_err_case41),
     };
 
     libspdm_test_context_t test_context = {
         LIBSPDM_TEST_CONTEXT_VERSION,
         true,
-        libspdm_requester_get_capabilities_test_send_message,
-        libspdm_requester_get_capabilities_test_receive_message,
+        send_message,
+        receive_message,
     };
 
     libspdm_setup_test_context(&test_context);
 
-    return cmocka_run_group_tests(m_spdm_requester_get_capabilities_tests,
+    return cmocka_run_group_tests(test_cases,
                                   libspdm_unit_test_group_setup,
                                   libspdm_unit_test_group_teardown);
 }

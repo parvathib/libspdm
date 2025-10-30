@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2024 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -9,7 +9,6 @@
 
 #include "hal/base.h"
 #include "internal/libspdm_lib_config.h"
-#include "library/spdm_return_status.h"
 #include "industry_standard/spdm.h"
 
 #if LIBSPDM_ENABLE_CAPABILITY_SET_CERT_CAP
@@ -21,11 +20,7 @@
  * @retval  true   It is in a trusted environment.
  * @retval  false  It is not in a trusted environment.
  **/
-extern bool libspdm_is_in_trusted_environment(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
-    void *spdm_context
-#endif
-    );
+extern bool libspdm_is_in_trusted_environment(void *spdm_context);
 
 /**
  * Stores or erase a certificate chain in non-volatile memory.
@@ -48,16 +43,11 @@ extern bool libspdm_is_in_trusted_environment(
  * @retval false  Unable to write certificate chain to non-volatile memory.
  **/
 extern bool libspdm_write_certificate_to_nvm(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
     void *spdm_context,
-#endif
     uint8_t slot_id, const void * cert_chain,
     size_t cert_chain_size,
-    uint32_t base_hash_algo, uint32_t base_asym_algo
-#if LIBSPDM_SET_CERT_CSR_PARAMS
-    , bool *need_reset, bool *is_busy
-#endif /* LIBSPDM_SET_CERT_CSR_PARAMS */
-    );
+    uint32_t base_hash_algo, uint32_t base_asym_algo, uint32_t pqc_asym_algo,
+    bool *need_reset, bool *is_busy);
 #endif /* LIBSPDM_ENABLE_CAPABILITY_SET_CERT_CAP */
 
 #endif /* RESPONDER_SETCERTLIB_H */

@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2024 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -9,6 +9,7 @@
 #if LIBSPDM_ENABLE_CAPABILITY_MEAS_CAP
 bool libspdm_generate_measurement_signature(libspdm_context_t *spdm_context,
                                             libspdm_session_info_t *session_info,
+                                            uint8_t slot_id,
                                             uint8_t *signature)
 {
     size_t signature_size;
@@ -33,27 +34,34 @@ bool libspdm_generate_measurement_signature(libspdm_context_t *spdm_context,
         return false;
     }
 
-    signature_size = libspdm_get_asym_signature_size(
-        spdm_context->connection_info.algorithm.base_asym_algo);
+    if (spdm_context->connection_info.algorithm.pqc_asym_algo != 0) {
+        signature_size = libspdm_get_pqc_asym_signature_size(
+            spdm_context->connection_info.algorithm.pqc_asym_algo);
+    } else {
+        signature_size = libspdm_get_asym_signature_size(
+            spdm_context->connection_info.algorithm.base_asym_algo);
+    }
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
     l1l2_buffer = libspdm_get_managed_buffer(&l1l2);
     l1l2_buffer_size = libspdm_get_managed_buffer_size(&l1l2);
 
     result = libspdm_responder_data_sign(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
         spdm_context,
-#endif
-        spdm_context->connection_info.version, SPDM_MEASUREMENTS,
+        spdm_context->connection_info.version,
+        libspdm_slot_id_to_key_pair_id(spdm_context, slot_id, false),
+        SPDM_MEASUREMENTS,
         spdm_context->connection_info.algorithm.base_asym_algo,
+        spdm_context->connection_info.algorithm.pqc_asym_algo,
         spdm_context->connection_info.algorithm.base_hash_algo,
         false, l1l2_buffer, l1l2_buffer_size, signature, &signature_size);
 #else
     result = libspdm_responder_data_sign(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
         spdm_context,
-#endif
-        spdm_context->connection_info.version, SPDM_MEASUREMENTS,
+        spdm_context->connection_info.version,
+        libspdm_slot_id_to_key_pair_id(spdm_context, slot_id, false),
+        SPDM_MEASUREMENTS,
         spdm_context->connection_info.algorithm.base_asym_algo,
+        spdm_context->connection_info.algorithm.pqc_asym_algo,
         spdm_context->connection_info.algorithm.base_hash_algo,
         true, l1l2_hash, l1l2_hash_size, signature, &signature_size);
 #endif
@@ -84,6 +92,8 @@ libspdm_return_t libspdm_get_response_measurements(libspdm_context_t *spdm_conte
     libspdm_session_state_t session_state;
     uint8_t content_changed;
     uint8_t *fill_response_ptr;
+    size_t request_context_size;
+    const void *request_context;
 
     spdm_request = request;
 
@@ -217,10 +227,28 @@ libspdm_return_t libspdm_get_response_measurements(libspdm_context_t *spdm_conte
          SPDM_GET_MEASUREMENTS_REQUEST_ATTRIBUTES_GENERATE_SIGNATURE) == 0) {
         signature_size = 0;
     } else {
-        signature_size = libspdm_get_asym_signature_size(
-            spdm_context->connection_info.algorithm.base_asym_algo);
+        if (spdm_context->connection_info.algorithm.pqc_asym_algo != 0) {
+            signature_size = libspdm_get_pqc_asym_signature_size(
+                spdm_context->connection_info.algorithm.pqc_asym_algo);
+        } else {
+            signature_size = libspdm_get_asym_signature_size(
+                spdm_context->connection_info.algorithm.base_asym_algo);
+        }
     }
 
+    if (spdm_request->header.spdm_version >= SPDM_MESSAGE_VERSION_13) {
+        request_context_size = SPDM_REQ_CONTEXT_SIZE;
+
+        if ((spdm_request->header.param1 &
+             SPDM_GET_MEASUREMENTS_REQUEST_ATTRIBUTES_GENERATE_SIGNATURE) == 0) {
+            request_context = (const uint8_t *)spdm_request + sizeof(spdm_message_header_t);
+        } else {
+            request_context = spdm_request + 1;
+        }
+    } else {
+        request_context_size = 0;
+        request_context = NULL;
+    }
 
     /* response_size should be large enough to hold a MEASUREMENTS response without
      * measurements or opaque data. */
@@ -239,14 +267,14 @@ libspdm_return_t libspdm_get_response_measurements(libspdm_context_t *spdm_conte
     measurements_size = meas_opaque_buffer_size;
 
     status = libspdm_measurement_collection(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
         spdm_context,
-#endif
         spdm_context->connection_info.version,
         spdm_context->connection_info.algorithm.measurement_spec,
         spdm_context->connection_info.algorithm.measurement_hash_algo,
         measurements_index,
         spdm_request->header.param1,
+        request_context_size,
+        request_context,
         &content_changed,
         &measurements_count,
         measurements,
@@ -287,14 +315,14 @@ libspdm_return_t libspdm_get_response_measurements(libspdm_context_t *spdm_conte
         opaque_data_size = meas_opaque_buffer_size - measurements_size;
 
         ret = libspdm_measurement_opaque_data(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
             spdm_context,
-#endif
             spdm_context->connection_info.version,
             spdm_context->connection_info.algorithm.measurement_spec,
             spdm_context->connection_info.algorithm.measurement_hash_algo,
             measurements_index,
             spdm_request->header.param1,
+            request_context_size,
+            request_context,
             opaque_data,
             &opaque_data_size);
 
@@ -422,7 +450,7 @@ libspdm_return_t libspdm_get_response_measurements(libspdm_context_t *spdm_conte
     fill_response_ptr =
         (uint8_t*)response + sizeof(spdm_measurements_response_t) + measurements_size;
 
-    if(!libspdm_get_random_number(SPDM_NONCE_SIZE, fill_response_ptr)) {
+    if (!libspdm_get_random_number(SPDM_NONCE_SIZE, fill_response_ptr)) {
         libspdm_reset_message_m(spdm_context, session_info);
         return libspdm_generate_error_response(spdm_context,
                                                SPDM_ERROR_CODE_UNSPECIFIED, 0,
@@ -465,7 +493,8 @@ libspdm_return_t libspdm_get_response_measurements(libspdm_context_t *spdm_conte
     if ((spdm_request->header.param1 &
          SPDM_GET_MEASUREMENTS_REQUEST_ATTRIBUTES_GENERATE_SIGNATURE) != 0) {
 
-        ret = libspdm_generate_measurement_signature(spdm_context, session_info, fill_response_ptr);
+        ret = libspdm_generate_measurement_signature(
+            spdm_context, session_info, slot_id_param, fill_response_ptr);
 
         if (!ret) {
             libspdm_reset_message_m(spdm_context, session_info);

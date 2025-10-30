@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2024 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -24,7 +24,7 @@ extern bool g_set_cert_is_busy;
  * Test 1: receives a valid SET_CERTIFICATE request message from Requester to set cert in slot_id:0 with device_cert model
  * Expected Behavior: produces a valid SET_CERTIFICATE_RSP response message
  **/
-void libspdm_test_responder_set_certificate_rsp_case1(void **state)
+static void rsp_set_certificate_rsp_case1(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -157,7 +157,7 @@ void libspdm_test_responder_set_certificate_rsp_case1(void **state)
  * Test 2: Wrong SET_CERTIFICATE message size (larger than expected)
  * Expected Behavior: generate an ERROR_RESPONSE with code SPDM_ERROR_CODE_INVALID_REQUEST
  **/
-void libspdm_test_responder_set_certificate_rsp_case2(void **state)
+static void rsp_set_certificate_rsp_case2(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -231,7 +231,7 @@ void libspdm_test_responder_set_certificate_rsp_case2(void **state)
  * Test 3: Force response_state = LIBSPDM_RESPONSE_STATE_BUSY when asked SET_CERTIFICATE
  * Expected Behavior: generate an ERROR_RESPONSE with code SPDM_ERROR_CODE_BUSY
  **/
-void libspdm_test_responder_set_certificate_rsp_case3(void **state)
+static void rsp_set_certificate_rsp_case3(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -308,7 +308,7 @@ void libspdm_test_responder_set_certificate_rsp_case3(void **state)
  * Test 4: Force response_state = LIBSPDM_RESPONSE_STATE_NEED_RESYNC when asked SET_CERTIFICATE
  * Expected Behavior: generate an ERROR_RESPONSE with code SPDM_ERROR_CODE_REQUEST_RESYNCH
  **/
-void libspdm_test_responder_set_certificate_rsp_case4(void **state)
+static void rsp_set_certificate_rsp_case4(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -384,7 +384,7 @@ void libspdm_test_responder_set_certificate_rsp_case4(void **state)
  * Test 5: receives a valid SET_CERTIFICATE request message from Requester to set cert in slot_id:1 with session
  * Expected Behavior: produces a valid SET_CERTIFICATE_RSP response message
  **/
-void libspdm_test_responder_set_certificate_rsp_case5(void **state)
+static void rsp_set_certificate_rsp_case5(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -427,7 +427,8 @@ void libspdm_test_responder_set_certificate_rsp_case5(void **state)
     spdm_context->last_spdm_request_session_id_valid = true;
     spdm_context->last_spdm_request_session_id = session_id;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init(spdm_context, session_info, session_id, true);
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_secured_message_set_session_state(
         session_info->secured_message_context,
         LIBSPDM_SESSION_STATE_ESTABLISHED);
@@ -470,7 +471,7 @@ void libspdm_test_responder_set_certificate_rsp_case5(void **state)
  * Test 6: receives a valid SET_CERTIFICATE request message from Requester with need_reset
  * Expected Behavior: The Responder return need reset
  **/
-void libspdm_test_responder_set_certificate_rsp_case6(void **state)
+static void rsp_set_certificate_rsp_case6(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -545,7 +546,7 @@ void libspdm_test_responder_set_certificate_rsp_case6(void **state)
  * Test 7: receives a valid SET_CERTIFICATE request message from Requester to set cert in slot_id:0 with alias_cert model
  * Expected Behavior: produces a valid SET_CERTIFICATE_RSP response message
  **/
-void libspdm_test_responder_set_certificate_rsp_case7(void **state)
+static void rsp_set_certificate_rsp_case7(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -621,7 +622,7 @@ void libspdm_test_responder_set_certificate_rsp_case7(void **state)
  * Test 8: receives a SET_CERTIFICATE request message to set cert in slot_id:1 without session and with trusted environment
  * Expected Behavior: produces a valid SET_CERTIFICATE_RSP response message
  **/
-void libspdm_test_responder_set_certificate_rsp_case8(void **state)
+static void rsp_set_certificate_rsp_case8(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -696,7 +697,7 @@ void libspdm_test_responder_set_certificate_rsp_case8(void **state)
  * Test 9: receives a SET_CERTIFICATE request message to set cert in slot_id:1 without session and without trusted environment
  * Expected Behavior: produces a valid ERROR response message
  **/
-void libspdm_test_responder_set_certificate_rsp_case9(void **state)
+static void rsp_set_certificate_rsp_case9(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -774,7 +775,7 @@ void libspdm_test_responder_set_certificate_rsp_case9(void **state)
  * Test 10: receives a valid SET_CERTIFICATE request message from Requester to erase cert in slot_id:1 with session
  * Expected Behavior: produces a valid SET_CERTIFICATE_RSP response message
  **/
-void libspdm_test_responder_set_certificate_rsp_case10(void **state)
+static void rsp_set_certificate_rsp_case10(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -827,7 +828,8 @@ void libspdm_test_responder_set_certificate_rsp_case10(void **state)
     spdm_context->last_spdm_request_session_id_valid = true;
     spdm_context->last_spdm_request_session_id = session_id;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init(spdm_context, session_info, session_id, true);
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_secured_message_set_session_state(
         session_info->secured_message_context,
         LIBSPDM_SESSION_STATE_ESTABLISHED);
@@ -893,7 +895,7 @@ void libspdm_test_responder_set_certificate_rsp_case10(void **state)
  * Test 11: receives a valid SET_CERTIFICATE request message from Requester to set cert in slot_id:1 with key_pair_id
  * Expected Behavior: produces a valid SET_CERTIFICATE_RSP response message
  **/
-void libspdm_test_responder_set_certificate_rsp_case11(void **state)
+static void rsp_set_certificate_rsp_case11(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -970,7 +972,7 @@ void libspdm_test_responder_set_certificate_rsp_case11(void **state)
  * Test 12: Illegal combination of MULTI_KEY_CONN_RSP = true, Erase = false, and SetCertModel = 0.
  * Expected Behavior: produces SPDM_ERROR_CODE_INVALID_REQUEST message.
  **/
-void libspdm_test_responder_set_certificate_rsp_case12(void **state)
+static void rsp_set_certificate_rsp_case12(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -1044,9 +1046,8 @@ void libspdm_test_responder_set_certificate_rsp_case12(void **state)
  * Test 13: The Responder cannot complete request due to busy response when writing to NVM.
  * Expected Behavior: The Responder returns a Busy error response.
  **/
-void libspdm_test_responder_set_certificate_rsp_case13(void **state)
+static void rsp_set_certificate_rsp_case13(void **state)
 {
-#if LIBSPDM_SET_CERT_CSR_PARAMS
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
     libspdm_context_t *spdm_context;
@@ -1112,36 +1113,35 @@ void libspdm_test_responder_set_certificate_rsp_case13(void **state)
 
     free(cert_chain);
     free(m_libspdm_set_certificate_request);
-#endif /* LIBSPDM_SET_CERT_CSR_PARAMS */
 }
 
-int libspdm_responder_set_certificate_rsp_test_main(void)
+int libspdm_rsp_set_certificate_rsp_test(void)
 {
-    const struct CMUnitTest spdm_responder_set_certificate_tests[] = {
+    const struct CMUnitTest test_cases[] = {
         /* Success Case for set_certificate to slot_id:0 with device_cert mode*/
-        cmocka_unit_test(libspdm_test_responder_set_certificate_rsp_case1),
+        cmocka_unit_test(rsp_set_certificate_rsp_case1),
         /* Bad request size*/
-        cmocka_unit_test(libspdm_test_responder_set_certificate_rsp_case2),
+        cmocka_unit_test(rsp_set_certificate_rsp_case2),
         /* response_state: LIBSPDM_RESPONSE_STATE_BUSY*/
-        cmocka_unit_test(libspdm_test_responder_set_certificate_rsp_case3),
+        cmocka_unit_test(rsp_set_certificate_rsp_case3),
         /* response_state: LIBSPDM_RESPONSE_STATE_NEED_RESYNC*/
-        cmocka_unit_test(libspdm_test_responder_set_certificate_rsp_case4),
+        cmocka_unit_test(rsp_set_certificate_rsp_case4),
         /* Success Case for set_certificate to slot_id:1 with session*/
-        cmocka_unit_test(libspdm_test_responder_set_certificate_rsp_case5),
+        cmocka_unit_test(rsp_set_certificate_rsp_case5),
         /* Responder requires a reset to complete the SET_CERTIFICATE request */
-        cmocka_unit_test(libspdm_test_responder_set_certificate_rsp_case6),
+        cmocka_unit_test(rsp_set_certificate_rsp_case6),
         /* Success Case for set_certificate to slot_id:0 with alias_cert mode*/
-        cmocka_unit_test(libspdm_test_responder_set_certificate_rsp_case7),
+        cmocka_unit_test(rsp_set_certificate_rsp_case7),
         /* Success Case for set_certificate to slot_id:1 without session and with trusted environment */
-        cmocka_unit_test(libspdm_test_responder_set_certificate_rsp_case8),
+        cmocka_unit_test(rsp_set_certificate_rsp_case8),
         /* Error Case for set_certificate to slot_id:1 without session and without trusted environment */
-        cmocka_unit_test(libspdm_test_responder_set_certificate_rsp_case9),
+        cmocka_unit_test(rsp_set_certificate_rsp_case9),
         /* Success Case for erase certificate to slot_id:1 with session*/
-        cmocka_unit_test(libspdm_test_responder_set_certificate_rsp_case10),
+        cmocka_unit_test(rsp_set_certificate_rsp_case10),
         /* Success Case for set_certificate to slot_id:1 with key_pair_id*/
-        cmocka_unit_test(libspdm_test_responder_set_certificate_rsp_case11),
-        cmocka_unit_test(libspdm_test_responder_set_certificate_rsp_case12),
-        cmocka_unit_test(libspdm_test_responder_set_certificate_rsp_case13),
+        cmocka_unit_test(rsp_set_certificate_rsp_case11),
+        cmocka_unit_test(rsp_set_certificate_rsp_case12),
+        cmocka_unit_test(rsp_set_certificate_rsp_case13),
     };
 
     libspdm_test_context_t test_context = {
@@ -1151,7 +1151,7 @@ int libspdm_responder_set_certificate_rsp_test_main(void)
 
     libspdm_setup_test_context(&test_context);
 
-    return cmocka_run_group_tests(spdm_responder_set_certificate_tests,
+    return cmocka_run_group_tests(test_cases,
                                   libspdm_unit_test_group_setup,
                                   libspdm_unit_test_group_teardown);
 }

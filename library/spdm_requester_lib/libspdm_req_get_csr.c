@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2024 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -27,10 +27,6 @@
  * @param[in]  key_pair_id                  The value of this field shall be the unique key pair number identifying the desired
  *                                          asymmetric key pair to associate with SlotID .
  * @param[out] available_csr_tracking_tag   available CSRTrackingTag when the Responder sends a ResetRequired error message
- *
- * @retval RETURN_SUCCESS               The measurement is got successfully.
- * @retval RETURN_DEVICE_ERROR          A device error occurs when communicates with the device.
- * @retval RETURN_SECURITY_VIOLATION    Any verification fails.
  **/
 static libspdm_return_t libspdm_try_get_csr(libspdm_context_t *spdm_context,
                                             const uint32_t *session_id,
@@ -182,10 +178,6 @@ static libspdm_return_t libspdm_try_get_csr(libspdm_context_t *spdm_context,
         status = LIBSPDM_STATUS_INVALID_MSG_SIZE;
         goto receive_done;
     }
-    if (spdm_response->header.spdm_version != spdm_request->header.spdm_version) {
-        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
-        goto receive_done;
-    }
     if (spdm_response->header.request_response_code == SPDM_ERROR) {
         if ((spdm_response->header.param1 == SPDM_ERROR_CODE_RESET_REQUIRED) &&
             (libspdm_get_connection_version(spdm_context) >= SPDM_MESSAGE_VERSION_13) &&
@@ -201,6 +193,10 @@ static libspdm_return_t libspdm_try_get_csr(libspdm_context_t *spdm_context,
             goto receive_done;
         }
     } else if (spdm_response->header.request_response_code != SPDM_CSR) {
+        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
+        goto receive_done;
+    }
+    if (spdm_response->header.spdm_version != spdm_request->header.spdm_version) {
         status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
         goto receive_done;
     }
@@ -220,7 +216,7 @@ static libspdm_return_t libspdm_try_get_csr(libspdm_context_t *spdm_context,
     }
     if (*csr_len < spdm_response->csr_length) {
         *csr_len = spdm_response->csr_length;
-        status =  LIBSPDM_STATUS_BUFFER_TOO_SMALL;
+        status = LIBSPDM_STATUS_BUFFER_TOO_SMALL;
         goto receive_done;
     }
 

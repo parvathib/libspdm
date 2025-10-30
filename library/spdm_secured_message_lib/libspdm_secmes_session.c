@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2024 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -58,16 +58,6 @@ void libspdm_bin_concat(spdm_version_number_t spdm_version,
     #undef LIBSPDM_BIN_CONCAT_LABEL
 }
 
-/**
- * This function generates SPDM AEAD key and IV for a session.
- *
- * @param  spdm_secured_message_context    A pointer to the SPDM secured message context.
- * @param  major_secret                  The major secret.
- * @param  key                          The buffer to store the AEAD key.
- * @param  iv                           The buffer to store the AEAD IV.
- *
- * @retval RETURN_SUCCESS  SPDM AEAD key and IV for a session is generated.
- **/
 bool libspdm_generate_aead_key_and_iv(
     libspdm_secured_message_context_t *secured_message_context,
     const uint8_t *major_secret, uint8_t *key, uint8_t *iv)
@@ -124,15 +114,6 @@ bool libspdm_generate_aead_key_and_iv(
     return true;
 }
 
-/**
- * This function generates SPDM finished_key for a session.
- *
- * @param  spdm_secured_message_context    A pointer to the SPDM secured message context.
- * @param  handshake_secret              The handshake secret.
- * @param  finished_key                  The buffer to store the finished key.
- *
- * @retval RETURN_SUCCESS  SPDM finished_key for a session is generated.
- **/
 bool libspdm_generate_finished_key(
     libspdm_secured_message_context_t *secured_message_context,
     const uint8_t *handshake_secret, uint8_t *finished_key)
@@ -165,14 +146,6 @@ bool libspdm_generate_finished_key(
     return true;
 }
 
-/**
- * This function generates SPDM HandshakeKey for a session.
- *
- * @param  spdm_secured_message_context    A pointer to the SPDM secured message context.
- * @param  th1_hash_data                  th1 hash
- *
- * @retval RETURN_SUCCESS  SPDM HandshakeKey for a session is generated.
- **/
 bool libspdm_generate_session_handshake_key(void *spdm_secured_message_context,
                                             const uint8_t *th1_hash_data)
 {
@@ -190,16 +163,20 @@ bool libspdm_generate_session_handshake_key(void *spdm_secured_message_context,
     hash_size = secured_message_context->hash_size;
 
     if (!(secured_message_context->use_psk)) {
-        LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "[DHE Secret]: "));
+        if (secured_message_context->kem_alg != 0) {
+            LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "[KEM Secret]: "));
+        } else {
+            LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "[DHE Secret]: "));
+        }
         LIBSPDM_INTERNAL_DUMP_HEX_STR(
-            secured_message_context->master_secret.dhe_secret,
-            secured_message_context->dhe_key_size);
+            secured_message_context->master_secret.shared_secret,
+            secured_message_context->shared_key_size);
         LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "\n"));
         libspdm_zero_mem(salt0, sizeof(salt0));
         status = libspdm_hkdf_extract(
             secured_message_context->base_hash_algo,
-            secured_message_context->master_secret.dhe_secret,
-            secured_message_context->dhe_key_size,
+            secured_message_context->master_secret.shared_secret,
+            secured_message_context->shared_key_size,
             salt0, hash_size,
             secured_message_context->master_secret.handshake_secret, hash_size);
         if (!status) {
@@ -337,19 +314,11 @@ bool libspdm_generate_session_handshake_key(void *spdm_secured_message_context,
     }
 
     secured_message_context->handshake_secret.response_handshake_sequence_number = 0;
-    libspdm_zero_mem(secured_message_context->master_secret.dhe_secret, LIBSPDM_MAX_DHE_KEY_SIZE);
+    libspdm_zero_mem(secured_message_context->master_secret.shared_secret, LIBSPDM_MAX_SHARED_KEY_SIZE);
 
     return true;
 }
 
-/**
- * This function generates SPDM DataKey for a session.
- *
- * @param  spdm_secured_message_context    A pointer to the SPDM secured message context.
- * @param  th2_hash_data                  th2 hash
- *
- * @retval RETURN_SUCCESS  SPDM DataKey for a session is generated.
- **/
 bool libspdm_generate_session_data_key(void *spdm_secured_message_context,
                                        const uint8_t *th2_hash_data)
 {
@@ -564,14 +533,6 @@ cleanup:
     return status;
 }
 
-/**
- * This function creates the updates of SPDM DataKey for a session.
- *
- * @param  spdm_secured_message_context    A pointer to the SPDM secured message context.
- * @param  action                       Indicate of the key update action.
- *
- * @retval RETURN_SUCCESS  SPDM DataKey update is created.
- **/
 bool libspdm_create_update_session_data_key(void *spdm_secured_message_context,
                                             libspdm_key_update_action_t action)
 {
@@ -728,15 +689,6 @@ void libspdm_clear_master_secret(void *spdm_secured_message_context)
     libspdm_zero_mem(secured_message_context->master_secret.master_secret, LIBSPDM_MAX_HASH_SIZE);
 }
 
-/**
- * This function activates the update of SPDM DataKey for a session.
- *
- * @param  spdm_secured_message_context    A pointer to the SPDM secured message context.
- * @param  action                       Indicate of the key update action.
- * @param  use_new_key                    Indicate if the new key should be used.
- *
- * @retval RETURN_SUCCESS  SPDM DataKey update is activated.
- **/
 bool libspdm_activate_update_session_data_key(void *spdm_secured_message_context,
                                               libspdm_key_update_action_t action,
                                               bool use_new_key)

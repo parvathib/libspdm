@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2024 DMTF. All rights reserved.
+ *  Copyright 2024-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -22,6 +22,10 @@ uint32_t g_supported_event_groups_list_len = 8;
 uint8_t g_event_group_count = 1;
 bool g_event_all_subscribe = false;
 bool g_event_all_unsubscribe = false;
+uint32_t g_event_count = 1;
+bool g_generate_event_list_error = false;
+bool g_event_get_types_error = false;
+bool g_event_subscribe_error = false;
 
 #if LIBSPDM_ENABLE_CAPABILITY_EVENT_CAP
 bool libspdm_event_get_types(
@@ -32,6 +36,10 @@ bool libspdm_event_get_types(
     uint32_t *supported_event_groups_list_len,
     uint8_t *event_group_count)
 {
+    if (g_event_get_types_error) {
+        return false;
+    }
+
     *supported_event_groups_list_len = g_supported_event_groups_list_len;
 
     for (uint32_t index = 0; index < *supported_event_groups_list_len; index++)
@@ -53,6 +61,10 @@ bool libspdm_event_subscribe(
     uint32_t subscribe_list_len,
     const void *subscribe_list)
 {
+    if (g_event_subscribe_error) {
+        return false;
+    }
+
     switch (subscribe_type) {
     case LIBSPDM_EVENT_SUBSCRIBE_ALL:
         if ((subscribe_list_len != 0) || (subscribe_list != NULL)) {
@@ -92,6 +104,28 @@ bool libspdm_event_subscribe(
         printf("%02x ", ((const char *)subscribe_list)[index]);
     }
     printf("\n");
+
+    return true;
+}
+
+bool libspdm_generate_event_list(
+    void *spdm_context,
+    spdm_version_number_t spdm_version,
+    uint32_t session_id,
+    uint32_t *event_count,
+    size_t *events_list_size,
+    void *events_list)
+{
+    if (g_generate_event_list_error) {
+        return false;
+    }
+
+    *event_count = g_event_count;
+
+    for (uint32_t index = 0; index < *events_list_size; index++)
+    {
+        ((char *)events_list)[index] = (char)index;
+    }
 
     return true;
 }

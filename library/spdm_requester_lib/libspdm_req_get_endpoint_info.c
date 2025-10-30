@@ -106,8 +106,13 @@ static libspdm_return_t libspdm_try_get_endpoint_info(libspdm_context_t *spdm_co
     }
 
     if ((request_attributes & SPDM_GET_ENDPOINT_INFO_REQUEST_ATTRIBUTE_SIGNATURE_REQUESTED) != 0) {
-        signature_size = libspdm_get_asym_signature_size(
-            spdm_context->connection_info.algorithm.base_asym_algo);
+        if (spdm_context->connection_info.algorithm.pqc_asym_algo != 0) {
+            signature_size = libspdm_get_pqc_asym_signature_size(
+                spdm_context->connection_info.algorithm.pqc_asym_algo);
+        } else {
+            signature_size = libspdm_get_asym_signature_size(
+                spdm_context->connection_info.algorithm.base_asym_algo);
+        }
     } else {
         signature_size = 0;
     }
@@ -141,7 +146,7 @@ static libspdm_return_t libspdm_try_get_endpoint_info(libspdm_context_t *spdm_co
         spdm_nonce = (uint8_t *)(spdm_request + 1);
 
         if (requester_nonce_in == NULL) {
-            if(!libspdm_get_random_number(SPDM_NONCE_SIZE, spdm_nonce)) {
+            if (!libspdm_get_random_number(SPDM_NONCE_SIZE, spdm_nonce)) {
                 libspdm_release_sender_buffer (spdm_context);
                 return LIBSPDM_STATUS_LOW_ENTROPY;
             }
@@ -190,10 +195,6 @@ static libspdm_return_t libspdm_try_get_endpoint_info(libspdm_context_t *spdm_co
         status = LIBSPDM_STATUS_INVALID_MSG_SIZE;
         goto receive_done;
     }
-    if (spdm_response->header.spdm_version != spdm_request->header.spdm_version) {
-        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
-        goto receive_done;
-    }
     if (spdm_response->header.request_response_code == SPDM_ERROR) {
         status = libspdm_handle_error_response_main(
             spdm_context, session_id,
@@ -203,6 +204,10 @@ static libspdm_return_t libspdm_try_get_endpoint_info(libspdm_context_t *spdm_co
             goto receive_done;
         }
     } else if (spdm_response->header.request_response_code != SPDM_ENDPOINT_INFO) {
+        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
+        goto receive_done;
+    }
+    if (spdm_response->header.spdm_version != spdm_request->header.spdm_version) {
         status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
         goto receive_done;
     }

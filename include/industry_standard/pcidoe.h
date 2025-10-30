@@ -31,6 +31,8 @@ typedef struct {
 #define PCI_DOE_DATA_OBJECT_TYPE_DOE_DISCOVERY 0x00
 #define PCI_DOE_DATA_OBJECT_TYPE_SPDM 0x01
 #define PCI_DOE_DATA_OBJECT_TYPE_SECURED_SPDM 0x02
+#define PCI_DOE_DATA_OBJECT_TYPE_SPDM_CONN_ID 0x03
+#define PCI_DOE_DATA_OBJECT_TYPE_SECURED_SPDM_CONN_ID 0x04
 
 #define PCI_DOE_MAX_SIZE_IN_BYTE 0x00100000
 #define PCI_DOE_MAX_SIZE_IN_DW (PCI_DOE_MAX_SIZE_IN_BYTE / 4)
@@ -84,6 +86,31 @@ typedef struct {
     pci_doe_spdm_vendor_defined_header_t pci_doe_vendor_header;
 /* pci_protocol specific content */
 } pci_doe_spdm_vendor_defined_response_t;
+
+typedef struct {
+    uint16_t standard_id; /* SPDM_STANDARD_ID_PCISIG*/
+    uint8_t len;
+    uint16_t vendor_id; /* SPDM_VENDOR_ID_PCISIG*/
+    uint16_t reserved;
+    uint32_t payload_length;
+    pci_protocol_header_t pci_protocol;
+} pci_doe_spdm_vendor_defined_header_large_t;
+
+typedef struct {
+    spdm_message_header_t spdm_header;
+    /* param1 == RSVD
+     * param2 == RSVD */
+    pci_doe_spdm_vendor_defined_header_large_t pci_doe_vendor_header;
+/* pci_protocol specific content */
+} pci_doe_spdm_vendor_defined_request_large_t;
+
+typedef struct {
+    spdm_message_header_t spdm_header;
+    /* param1 == RSVD
+     * param2 == RSVD*/
+    pci_doe_spdm_vendor_defined_header_large_t pci_doe_vendor_header;
+/* pci_protocol specific content */
+} pci_doe_spdm_vendor_defined_response_large_t;
 
 #pragma pack()
 

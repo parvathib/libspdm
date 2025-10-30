@@ -1,15 +1,13 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2022 DMTF. All rights reserved.
- *  License: BSD 3-Clause License. For full text see link:
- * https://github.com/DMTF/libspdm/blob/main/LICENSE.md
+ *  Copyright 2021-2025 DMTF. All rights reserved.
+ *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
 #include "spdm_unit_test.h"
 #include "internal/libspdm_requester_lib.h"
 
-#if (LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP) && (LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP) && \
-    (LIBSPDM_ENABLE_CAPABILITY_CERT_CAP)
+#if (LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP) && (LIBSPDM_ENABLE_CAPABILITY_CERT_CAP)
 
 /* #define TEST_DEBUG*/
 #ifdef TEST_DEBUG
@@ -45,7 +43,7 @@ size_t m_spdm_get_certificate_request4_size =
  * certificate chain Expected Behavior: generate a correctly formed Certificate
  * message, including its portion_length and remainder_length fields
  **/
-void libspdm_test_requester_encap_certificate_case1(void **state)
+static void req_encap_certificate_case1(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -103,7 +101,7 @@ void libspdm_test_requester_encap_certificate_case1(void **state)
  * Test 2:
  * Expected Behavior:
  **/
-void libspdm_test_requester_encap_certificate_case2(void **state)
+static void req_encap_certificate_case2(void **state)
 {
 }
 
@@ -112,7 +110,7 @@ void libspdm_test_requester_encap_certificate_case2(void **state)
  * keeping offset 0 Expected Behavior: generate correctly formed Certificate
  * messages, including its portion_length and remainder_length fields
  **/
-void libspdm_test_requester_encap_certificate_case3(void **state)
+static void req_encap_certificate_case3(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -164,7 +162,7 @@ void libspdm_test_requester_encap_certificate_case3(void **state)
 
         /* resetting an internal buffer to avoid overflow and prevent tests to
          * succeed*/
-        libspdm_reset_message_b(spdm_context);
+        libspdm_reset_message_mut_b(spdm_context);
         response_size = sizeof(response);
         m_spdm_get_certificate_request3_size =
             sizeof(m_spdm_get_certificate_request3);
@@ -190,7 +188,7 @@ void libspdm_test_requester_encap_certificate_case3(void **state)
  * keeping length 0 Expected Behavior: generate correctly formed Certificate
  * messages, including its portion_length and remainder_length fields
  **/
-void libspdm_test_requester_encap_certificate_case4(void **state)
+static void req_encap_certificate_case4(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -245,7 +243,7 @@ void libspdm_test_requester_encap_certificate_case4(void **state)
 
         /* resetting an internal buffer to avoid overflow and prevent tests to
          * succeed*/
-        libspdm_reset_message_b(spdm_context);
+        libspdm_reset_message_mut_b(spdm_context);
         response_size = sizeof(response);
         status = libspdm_get_encap_response_certificate(
             spdm_context, m_spdm_get_certificate_request3_size,
@@ -281,7 +279,7 @@ void libspdm_test_requester_encap_certificate_case4(void **state)
  * formed Certificate messages, including its portion_length and remainder_length
  * fields
  **/
-void libspdm_test_requester_encap_certificate_case5(void **state)
+static void req_encap_certificate_case5(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -333,7 +331,7 @@ void libspdm_test_requester_encap_certificate_case5(void **state)
 
         /* resetting an internal buffer to avoid overflow and prevent tests to
          * succeed*/
-        libspdm_reset_message_b(spdm_context);
+        libspdm_reset_message_mut_b(spdm_context);
         response_size = sizeof(response);
         status = libspdm_get_encap_response_certificate(
             spdm_context, m_spdm_get_certificate_request3_size,
@@ -385,7 +383,7 @@ void libspdm_test_requester_encap_certificate_case5(void **state)
  * Expected Behavior: generate correctly formed Certificate messages, including
  * its portion_length and remainder_length fields
  **/
-void libspdm_test_requester_encap_certificate_case6(void **state)
+static void req_encap_certificate_case6(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -420,7 +418,7 @@ void libspdm_test_requester_encap_certificate_case6(void **state)
 
     /* resetting an internal buffer to avoid overflow and prevent tests to
      * succeed*/
-    libspdm_reset_message_b(spdm_context);
+    libspdm_reset_message_mut_b(spdm_context);
 
     spdm_response = NULL;
     for (size_t offset = 0; offset < data_size; offset++)
@@ -458,7 +456,7 @@ void libspdm_test_requester_encap_certificate_case6(void **state)
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
             count = (data_size + m_spdm_get_certificate_request3.length - 1) /
                     m_spdm_get_certificate_request3.length;
-            assert_int_equal(spdm_context->transcript.message_b.buffer_size,
+            assert_int_equal(spdm_context->transcript.message_mut_b.buffer_size,
                              sizeof(spdm_get_certificate_request_t) * count +
                              sizeof(spdm_certificate_response_t) * count +
                              data_size);
@@ -473,7 +471,7 @@ void libspdm_test_requester_encap_certificate_case6(void **state)
  * GET_CERTIFICATE request shall be ignored by the Responder
  * Expected Behavior: generate a correctly formed Certificate message, including its portion_length and remainder_length fields
  **/
-void libspdm_test_requester_encap_certificate_case7(void **state)
+static void req_encap_certificate_case7(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -528,21 +526,22 @@ void libspdm_test_requester_encap_certificate_case7(void **state)
     free(data);
 }
 
-int libspdm_requester_encap_certificate_test_main(void)
+int libspdm_req_encap_certificate_test(void)
 {
-    const struct CMUnitTest spdm_requester_encap_certificate_tests[] = {
+    const struct CMUnitTest test_cases[] = {
         /* Success Case*/
-        cmocka_unit_test(libspdm_test_requester_encap_certificate_case1),
+        cmocka_unit_test(req_encap_certificate_case1),
         /* Can be populated with new test.*/
-        cmocka_unit_test(libspdm_test_requester_encap_certificate_case2),
+        cmocka_unit_test(req_encap_certificate_case2),
+        cmocka_unit_test(req_encap_certificate_case3),
         /* Tests varying offset*/
-        cmocka_unit_test(libspdm_test_requester_encap_certificate_case4),
+        cmocka_unit_test(req_encap_certificate_case4),
         /* Tests large certificate chains*/
-        cmocka_unit_test(libspdm_test_requester_encap_certificate_case5),
+        cmocka_unit_test(req_encap_certificate_case5),
         /* Requests byte by byte*/
-        cmocka_unit_test(libspdm_test_requester_encap_certificate_case6),
+        cmocka_unit_test(req_encap_certificate_case6),
         /* check request attributes and response attributes*/
-        cmocka_unit_test(libspdm_test_requester_encap_certificate_case7),
+        cmocka_unit_test(req_encap_certificate_case7),
     };
 
     libspdm_test_context_t test_context = {
@@ -552,9 +551,9 @@ int libspdm_requester_encap_certificate_test_main(void)
 
     libspdm_setup_test_context(&test_context);
 
-    return cmocka_run_group_tests(spdm_requester_encap_certificate_tests,
+    return cmocka_run_group_tests(test_cases,
                                   libspdm_unit_test_group_setup,
                                   libspdm_unit_test_group_teardown);
 }
 
-#endif /* (LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP) && (..) */
+#endif /* (LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP) && (..) */

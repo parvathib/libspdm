@@ -1,29 +1,14 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2024 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
 #include "internal/libspdm_responder_lib.h"
 #include "internal/libspdm_secured_message_lib.h"
 
-/**
- * Process the SPDM KEY_UPDATE request and return the response.
- *
- * @param  spdm_context                  A pointer to the SPDM context.
- * @param  request_size                  size in bytes of the request data.
- * @param  request                      A pointer to the request data.
- * @param  response_size                 size in bytes of the response data.
- *                                     On input, it means the size in bytes of response data buffer.
- *                                     On output, it means the size in bytes of copied response data buffer if RETURN_SUCCESS is returned,
- *                                     and means the size in bytes of desired response data buffer if RETURN_BUFFER_TOO_SMALL is returned.
- * @param  response                     A pointer to the response data.
- *
- * @retval RETURN_SUCCESS               The request is processed and the response is returned.
- * @retval RETURN_BUFFER_TOO_SMALL      The buffer is too small to hold the data.
- * @retval RETURN_DEVICE_ERROR          A device error occurs when communicates with the device.
- * @retval RETURN_SECURITY_VIOLATION    Any verification fails.
- **/
+#if (LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP) || (LIBSPDM_ENABLE_CAPABILITY_PSK_CAP)
+
 libspdm_return_t libspdm_get_response_key_update(libspdm_context_t *spdm_context,
                                                  size_t request_size,
                                                  const void *request,
@@ -127,9 +112,9 @@ libspdm_return_t libspdm_get_response_key_update(libspdm_context_t *spdm_context
 
     switch (spdm_request->header.param1) {
     case SPDM_KEY_UPDATE_OPERATIONS_TABLE_UPDATE_KEY:
-        if(!libspdm_consttime_is_mem_equal(prev_spdm_request,
-                                           &spdm_key_init_update_operation,
-                                           sizeof(spdm_key_update_request_t))) {
+        if (!libspdm_consttime_is_mem_equal(prev_spdm_request,
+                                            &spdm_key_init_update_operation,
+                                            sizeof(spdm_key_update_request_t))) {
             return libspdm_generate_error_response(spdm_context,
                                                    SPDM_ERROR_CODE_INVALID_REQUEST, 0,
                                                    response_size, response);
@@ -153,9 +138,9 @@ libspdm_return_t libspdm_get_response_key_update(libspdm_context_t *spdm_context
                          spdm_request, request_size);
         break;
     case SPDM_KEY_UPDATE_OPERATIONS_TABLE_UPDATE_ALL_KEYS:
-        if(!libspdm_consttime_is_mem_equal(prev_spdm_request,
-                                           &spdm_key_init_update_operation,
-                                           sizeof(spdm_key_update_request_t))) {
+        if (!libspdm_consttime_is_mem_equal(prev_spdm_request,
+                                            &spdm_key_init_update_operation,
+                                            sizeof(spdm_key_update_request_t))) {
             return libspdm_generate_error_response(spdm_context,
                                                    SPDM_ERROR_CODE_INVALID_REQUEST, 0,
                                                    response_size, response);
@@ -206,10 +191,9 @@ libspdm_return_t libspdm_get_response_key_update(libspdm_context_t *spdm_context
                          spdm_request, request_size);
         break;
     case SPDM_KEY_UPDATE_OPERATIONS_TABLE_VERIFY_NEW_KEY:
-        if(prev_spdm_request->header.param1 !=
-           SPDM_KEY_UPDATE_OPERATIONS_TABLE_UPDATE_KEY &&
-           prev_spdm_request->header.param1 !=
-           SPDM_KEY_UPDATE_OPERATIONS_TABLE_UPDATE_ALL_KEYS) {
+        if ((prev_spdm_request->header.param1 != SPDM_KEY_UPDATE_OPERATIONS_TABLE_UPDATE_KEY) &&
+            (prev_spdm_request->header.param1 !=
+             SPDM_KEY_UPDATE_OPERATIONS_TABLE_UPDATE_ALL_KEYS)) {
             return libspdm_generate_error_response(spdm_context,
                                                    SPDM_ERROR_CODE_INVALID_REQUEST, 0,
                                                    response_size, response);
@@ -253,3 +237,5 @@ libspdm_return_t libspdm_get_response_key_update(libspdm_context_t *spdm_context
 
     return LIBSPDM_STATUS_SUCCESS;
 }
+
+#endif /* (LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP) || (LIBSPDM_ENABLE_CAPABILITY_PSK_CAP) */

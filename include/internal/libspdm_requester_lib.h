@@ -144,6 +144,25 @@ libspdm_return_t libspdm_get_version(libspdm_context_t *spdm_context,
 libspdm_return_t libspdm_get_capabilities(libspdm_context_t *spdm_context);
 
 /**
+ * This function sends GET_CAPABILITIES and receives CAPABILITIES.
+ *
+ * Optionally, if supported_algs is non-NULL, the negotiated SPDM version is >= 1.3,
+ * and CHUNK_CAP is set on both requester and responder, this call retrieves the
+ * Supported Algorithms block appended to CAPABILITIES (supported_algs_length is in/out).
+ *
+ * @param  spdm_context                 A pointer to the SPDM context.
+ * @param  supported_algs_length        On input, the size of the supported_algs buffer.
+ * @param  supported_algs               A pointer to a buffer to store the supported algorithms.
+ *                                      If NULL, supported algorithms are not requested.
+ *
+ * @retval RETURN_SUCCESS               The GET_CAPABILITIES is sent and the CAPABILITIES is received.
+ * @retval RETURN_DEVICE_ERROR          A device error occurs when communicates with the device.
+ **/
+libspdm_return_t libspdm_get_capabilities_with_supported_algs(libspdm_context_t *spdm_context,
+                                                              size_t *supported_algs_length,
+                                                              void *supported_algs);
+
+/**
  * This function sends NEGOTIATE_ALGORITHMS and receives ALGORITHMS.
  *
  * @param  spdm_context                  A pointer to the SPDM context.
@@ -262,6 +281,15 @@ libspdm_return_t libspdm_send_receive_key_exchange_ex(
 libspdm_return_t libspdm_send_receive_finish(libspdm_context_t *spdm_context,
                                              uint32_t session_id,
                                              uint8_t req_slot_id_param);
+
+libspdm_return_t libspdm_send_receive_finish_ex(
+    libspdm_context_t *spdm_context,
+    uint32_t session_id,
+    uint8_t req_slot_id_param,
+    const void *requester_opaque_data,
+    size_t requester_opaque_data_size,
+    void *responder_opaque_data,
+    size_t *responder_opaque_data_size);
 #endif /* LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP */
 
 #if LIBSPDM_ENABLE_CAPABILITY_PSK_CAP
@@ -338,6 +366,14 @@ libspdm_return_t libspdm_send_receive_psk_exchange_ex(libspdm_context_t *spdm_co
  **/
 libspdm_return_t libspdm_send_receive_psk_finish(libspdm_context_t *spdm_context,
                                                  uint32_t session_id);
+
+libspdm_return_t libspdm_send_receive_psk_finish_ex(
+    libspdm_context_t *spdm_context,
+    uint32_t session_id,
+    const void *requester_opaque_data,
+    size_t requester_opaque_data_size,
+    void *responder_opaque_data,
+    size_t *responder_opaque_data_size);
 #endif /* LIBSPDM_ENABLE_CAPABILITY_PSK_CAP */
 
 #if (LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP) || (LIBSPDM_ENABLE_CAPABILITY_PSK_CAP)
@@ -378,7 +414,6 @@ libspdm_return_t libspdm_encapsulated_request(libspdm_context_t *spdm_context,
                                               uint8_t mut_auth_requested,
                                               uint8_t *req_slot_id_param);
 
-#if LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP
 #if LIBSPDM_ENABLE_CAPABILITY_CERT_CAP
 /**
  * Process the SPDM encapsulated GET_DIGESTS request and return the response.
@@ -427,6 +462,7 @@ libspdm_return_t libspdm_get_encap_response_certificate(void *spdm_context,
                                                         void *response);
 #endif /* LIBSPDM_ENABLE_CAPABILITY_CERT_CAP */
 
+#if LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP
 #if LIBSPDM_ENABLE_CAPABILITY_CHAL_CAP
 /**
  * Process the SPDM encapsulated CHALLENGE request and return the response.
@@ -451,6 +487,7 @@ libspdm_return_t libspdm_get_encap_response_challenge_auth(
 #endif /* LIBSPDM_ENABLE_CAPABILITY_CHAL_CAP */
 #endif /* LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP */
 
+#if ((LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP) || (LIBSPDM_ENABLE_CAPABILITY_PSK_CAP))
 /**
  * Process the SPDM encapsulated KEY_UPDATE request and return the response.
  *
@@ -473,6 +510,7 @@ libspdm_return_t libspdm_get_encap_response_key_update(void *spdm_context,
                                                        void *request,
                                                        size_t *response_size,
                                                        void *response);
+#endif /* ((LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP) || (LIBSPDM_ENABLE_CAPABILITY_PSK_CAP)) */
 
 #if LIBSPDM_EVENT_RECIPIENT_SUPPORT
 libspdm_return_t libspdm_get_encap_response_event_ack(void *spdm_context,
@@ -481,6 +519,26 @@ libspdm_return_t libspdm_get_encap_response_event_ack(void *spdm_context,
                                                       size_t *response_size,
                                                       void *response);
 #endif /* LIBSPDM_EVENT_RECIPIENT_SUPPORT */
+#if LIBSPDM_ENABLE_CAPABILITY_EVENT_CAP
+libspdm_return_t libspdm_get_encap_supported_event_types(void *spdm_context,
+                                                         size_t request_size,
+                                                         void *request,
+                                                         size_t *response_size,
+                                                         void *response);
+
+libspdm_return_t libspdm_get_encap_subscribe_event_types_ack(void *spdm_context,
+                                                             size_t request_size,
+                                                             void *request,
+                                                             size_t *response_size,
+                                                             void *response);
+#endif /* LIBSPDM_ENABLE_CAPABILITY_EVENT_CAP */
+#if LIBSPDM_ENABLE_CAPABILITY_ENDPOINT_INFO_CAP
+libspdm_return_t libspdm_get_encap_response_endpoint_info(void *spdm_context,
+                                                          size_t request_size,
+                                                          void *request,
+                                                          size_t *response_size,
+                                                          void *response);
+#endif /* LIBSPDM_ENABLE_CAPABILITY_ENDPOINT_INFO_CAP */
 #endif /* LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP */
 
 /**
@@ -557,9 +615,9 @@ void libspdm_build_opaque_data_supported_version_data(libspdm_context_t *spdm_co
  * @param  data_in_size  Size in bytes of the data_in.
  * @param  data_in       A pointer to the buffer to store the opaque data version selection.
  **/
-libspdm_return_t libspdm_process_opaque_data_version_selection_data(libspdm_context_t *spdm_context,
-                                                                    size_t data_in_size,
-                                                                    void *data_in);
+libspdm_return_t libspdm_process_opaque_data_version_selection_data(
+    libspdm_context_t *spdm_context, size_t data_in_size, void *data_in,
+    spdm_version_number_t *secured_message_version);
 
 #if LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP
 /**
@@ -574,6 +632,7 @@ libspdm_return_t libspdm_process_opaque_data_version_selection_data(libspdm_cont
  **/
 bool libspdm_generate_finish_req_signature(libspdm_context_t *spdm_context,
                                            libspdm_session_info_t *session_info,
+                                           uint8_t slot_id,
                                            uint8_t *signature);
 #endif
 

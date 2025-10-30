@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2024 DMTF. All rights reserved.
+ *  Copyright 2024-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -20,7 +20,7 @@ size_t m_libspdm_get_key_pair_info_request1_size = sizeof(m_libspdm_get_key_pair
  * Test 1: Successful response to get key pair info with key pair id 4
  * Expected Behavior: get a LIBSPDM_STATUS_SUCCESS return code, and correct response message size and fields
  **/
-void libspdm_test_responder_key_pair_info_case1(void **state)
+static void rsp_key_pair_info_case1(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -45,7 +45,6 @@ void libspdm_test_responder_key_pair_info_case1(void **state)
         m_libspdm_use_asym_algo;
     spdm_context->local_context.capability.flags |=
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_GET_KEY_PAIR_INFO_CAP;
-    spdm_context->local_context.total_key_pairs = libspdm_read_total_key_pairs();
 
     key_pair_id = 4;
     public_key_info_len = sizeof(public_key_info_ecp256);
@@ -71,7 +70,7 @@ void libspdm_test_responder_key_pair_info_case1(void **state)
  * KeyPairID is set to 0.
  * Expected Behavior:  Generate error response message
  **/
-void libspdm_test_responder_key_pair_info_case2(void **state)
+static void rsp_key_pair_info_case2(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -96,8 +95,6 @@ void libspdm_test_responder_key_pair_info_case2(void **state)
     key_pair_id = 0;
     m_libspdm_get_key_pair_info_request1.key_pair_id = key_pair_id;
 
-    spdm_context->local_context.total_key_pairs = libspdm_read_total_key_pairs();
-
     response_size = sizeof(response);
 
     status = libspdm_get_response_key_pair_info(
@@ -115,7 +112,7 @@ void libspdm_test_responder_key_pair_info_case2(void **state)
  * Test 3: The key_pair_id is greater than the total key pairs
  * Expected Behavior:  Generate error response message
  **/
-void libspdm_test_responder_key_pair_info_case3(void **state)
+static void rsp_key_pair_info_case3(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -136,9 +133,8 @@ void libspdm_test_responder_key_pair_info_case3(void **state)
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_GET_KEY_PAIR_INFO_CAP;
 
     /* key_pair_id > total_key_pairs*/
-    key_pair_id = libspdm_read_total_key_pairs() + 1;
+    key_pair_id = libspdm_read_total_key_pairs(spdm_context) + 1;
     m_libspdm_get_key_pair_info_request1.key_pair_id = key_pair_id;
-    spdm_context->local_context.total_key_pairs = libspdm_read_total_key_pairs();
 
     response_size = sizeof(response);
 
@@ -157,7 +153,7 @@ void libspdm_test_responder_key_pair_info_case3(void **state)
  * Test 4: not set KEY_PAIR_INFO
  * Expected Behavior:  Generate error response message
  **/
-void libspdm_test_responder_key_pair_info_case4(void **state)
+static void rsp_key_pair_info_case4(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -181,8 +177,6 @@ void libspdm_test_responder_key_pair_info_case4(void **state)
     key_pair_id = 1;
     m_libspdm_get_key_pair_info_request1.key_pair_id = key_pair_id;
 
-    spdm_context->local_context.total_key_pairs = libspdm_read_total_key_pairs();
-
     response_size = sizeof(response);
 
     status = libspdm_get_response_key_pair_info(
@@ -196,17 +190,17 @@ void libspdm_test_responder_key_pair_info_case4(void **state)
     assert_int_equal(spdm_response->header.param2, SPDM_GET_KEY_PAIR_INFO);
 }
 
-int libspdm_responder_key_pair_info_test_main(void)
+int libspdm_rsp_key_pair_info_test(void)
 {
-    const struct CMUnitTest spdm_responder_key_pair_info_tests[] = {
+    const struct CMUnitTest test_cases[] = {
         /* Success Case to get key pair info*/
-        cmocka_unit_test(libspdm_test_responder_key_pair_info_case1),
+        cmocka_unit_test(rsp_key_pair_info_case1),
         /* The KeyPairID is at least 1 , KeyPairID is set to 0.*/
-        cmocka_unit_test(libspdm_test_responder_key_pair_info_case2),
+        cmocka_unit_test(rsp_key_pair_info_case2),
         /* KeyPairID > total_key_pairs*/
-        cmocka_unit_test(libspdm_test_responder_key_pair_info_case3),
+        cmocka_unit_test(rsp_key_pair_info_case3),
         /* capability not set KEY_PAIR_INFO*/
-        cmocka_unit_test(libspdm_test_responder_key_pair_info_case4),
+        cmocka_unit_test(rsp_key_pair_info_case4),
     };
 
     libspdm_test_context_t test_context = {
@@ -215,7 +209,7 @@ int libspdm_responder_key_pair_info_test_main(void)
     };
     libspdm_setup_test_context(&test_context);
 
-    return cmocka_run_group_tests(spdm_responder_key_pair_info_tests,
+    return cmocka_run_group_tests(test_cases,
                                   libspdm_unit_test_group_setup,
                                   libspdm_unit_test_group_teardown);
 }

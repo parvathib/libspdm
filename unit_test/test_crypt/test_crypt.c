@@ -93,6 +93,23 @@ bool libspdm_cryptest_main(void)
         return status;
     }
 
+    #if LIBSPDM_EDDSA_SUPPORT
+    status = libspdm_validate_crypt_x509("ed25519", sizeof("ed25519"));
+    if (!status) {
+        return status;
+    }
+
+    status = libspdm_validate_crypt_x509("ed448", sizeof("ed448"));
+    if (!status) {
+    }
+    #endif /* LIBSPDM_EDDSA_SUPPORT */
+
+    #if LIBSPDM_SM2_DSA_SUPPORT
+    status = libspdm_validate_crypt_x509("sm2", sizeof("sm2"));
+    if (!status) {
+    }
+    #endif /* LIBSPDM_SM2_DSA_SUPPORT */
+
     #if LIBSPDM_FFDHE_SUPPORT
     status = libspdm_validate_crypt_dh();
     if (!status) {
@@ -142,6 +159,27 @@ bool libspdm_cryptest_main(void)
     if (!status) {
         return status;
     }
+
+    #if LIBSPDM_ML_KEM_SUPPORT
+    status = libspdm_validate_crypt_mlkem();
+    if (!status) {
+        return status;
+    }
+    #endif /* LIBSPDM_ML_KEM_SUPPORT */
+
+    #if LIBSPDM_ML_DSA_SUPPORT
+    status = libspdm_validate_crypt_mldsa();
+    if (!status) {
+        return status;
+    }
+    #endif /* LIBSPDM_ML_DSA_SUPPORT */
+
+    #if LIBSPDM_SLH_DSA_SUPPORT
+    status = libspdm_validate_crypt_slhdsa();
+    if (!status) {
+        return status;
+    }
+    #endif /* LIBSPDM_SLH_DSA_SUPPORT */
 
     return status;
 }

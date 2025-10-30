@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2024 DMTF. All rights reserved.
+ *  Copyright 2024-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -377,15 +377,18 @@ size_t libspdm_fill_measurement_device_mode_block (
     return sizeof(spdm_measurement_block_dmtf_t) + sizeof(device_mode);
 }
 
+bool g_check_measurement_request_context = false;
+uint64_t g_measurement_request_context;
+
 libspdm_return_t libspdm_measurement_collection(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
     void *spdm_context,
-#endif
     spdm_version_number_t spdm_version,
     uint8_t measurement_specification,
     uint32_t measurement_hash_algo,
     uint8_t measurements_index,
     uint8_t request_attribute,
+    size_t request_context_size,
+    const void *request_context,
     uint8_t *content_changed,
     uint8_t *measurements_count,
     void *measurements,
@@ -398,10 +401,19 @@ libspdm_return_t libspdm_measurement_collection(
     bool use_bit_stream;
     size_t measurement_block_size;
 
-    if ((measurement_specification !=
-         SPDM_MEASUREMENT_SPECIFICATION_DMTF) ||
+    if ((measurement_specification != SPDM_MEASUREMENT_SPECIFICATION_DMTF) ||
         (measurement_hash_algo == 0)) {
         return LIBSPDM_STATUS_UNSUPPORTED_CAP;
+    }
+
+    if (g_check_measurement_request_context) {
+        if ((spdm_version >> SPDM_VERSION_NUMBER_SHIFT_BIT) >= SPDM_MESSAGE_VERSION_13) {
+            LIBSPDM_ASSERT(request_context_size == SPDM_REQ_CONTEXT_SIZE);
+            LIBSPDM_ASSERT(libspdm_read_uint64(request_context) == g_measurement_request_context);
+        } else {
+            LIBSPDM_ASSERT(request_context_size == 0);
+            LIBSPDM_ASSERT(request_context == NULL);
+        }
     }
 
     hash_size = libspdm_get_measurement_hash_size(measurement_hash_algo);
@@ -611,20 +623,30 @@ successful_return:
 size_t libspdm_secret_lib_meas_opaque_data_size;
 
 bool libspdm_measurement_opaque_data(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
     void *spdm_context,
-#endif
     spdm_version_number_t spdm_version,
     uint8_t measurement_specification,
     uint32_t measurement_hash_algo,
     uint8_t measurement_index,
     uint8_t request_attribute,
+    size_t request_context_size,
+    const void *request_context,
     void *opaque_data,
     size_t *opaque_data_size)
 {
     size_t index;
 
     LIBSPDM_ASSERT(libspdm_secret_lib_meas_opaque_data_size <= *opaque_data_size);
+
+    if (g_check_measurement_request_context) {
+        if ((spdm_version >> SPDM_VERSION_NUMBER_SHIFT_BIT) >= SPDM_MESSAGE_VERSION_13) {
+            LIBSPDM_ASSERT(request_context_size == SPDM_REQ_CONTEXT_SIZE);
+            LIBSPDM_ASSERT(libspdm_read_uint64(request_context) == g_measurement_request_context);
+        } else {
+            LIBSPDM_ASSERT(request_context_size == 0);
+            LIBSPDM_ASSERT(request_context == NULL);
+        }
+    }
 
     *opaque_data_size = libspdm_secret_lib_meas_opaque_data_size;
 
@@ -637,9 +659,7 @@ bool libspdm_measurement_opaque_data(
 }
 
 bool libspdm_generate_measurement_summary_hash(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
     void *spdm_context,
-#endif
     spdm_version_number_t spdm_version, uint32_t base_hash_algo,
     uint8_t measurement_specification, uint32_t measurement_hash_algo,
     uint8_t measurement_summary_hash_type,
@@ -659,7 +679,7 @@ bool libspdm_generate_measurement_summary_hash(
 
     switch (measurement_summary_hash_type) {
     case SPDM_REQUEST_NO_MEASUREMENT_SUMMARY_HASH:
-        break;
+        return false;
 
     case SPDM_REQUEST_TCB_COMPONENT_MEASUREMENT_HASH:
     case SPDM_REQUEST_ALL_MEASUREMENTS_HASH:
@@ -670,13 +690,13 @@ bool libspdm_generate_measurement_summary_hash(
         /* get all measurement data*/
         device_measurement_size = sizeof(device_measurement);
         status = libspdm_measurement_collection(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
             spdm_context,
-#endif
             spdm_version, measurement_specification,
             measurement_hash_algo,
             0xFF, /* Get all measurements*/
             0,
+            0,
+            NULL,
             NULL,
             &device_measurement_count, device_measurement,
             &device_measurement_size);

@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2022 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -21,10 +21,6 @@
  * @param  cert_chain                    A pointer to a destination buffer to store the certificate chain.
  * @param  measurement_hash_type          The type of the measurement hash.
  * @param  measurement_hash              A pointer to a destination buffer to store the measurement hash.
- *
- * @retval RETURN_SUCCESS               The authentication is got successfully.
- * @retval RETURN_DEVICE_ERROR          A device error occurs when communicates with the device.
- * @retval RETURN_SECURITY_VIOLATION    Any verification fails.
  **/
 libspdm_return_t
 spdm_authentication(void *context, uint8_t *slot_mask,
@@ -52,13 +48,13 @@ spdm_authentication(void *context, uint8_t *slot_mask,
     }
     #endif /* LIBSPDM_SEND_GET_CERTIFICATE_SUPPORT */
 
-    #if LIBSPDM_ENABLE_CAPABILITY_CHAL_CAP
+    #if LIBSPDM_SEND_CHALLENGE_SUPPORT
     status = libspdm_challenge(context, NULL, slot_id, measurement_hash_type,
                                measurement_hash, auth_slot_mask);
     if (LIBSPDM_STATUS_IS_ERROR(status)) {
         return status;
     }
-    #endif /* LIBSPDM_ENABLE_CAPABILITY_CHAL_CAP*/
+    #endif /* LIBSPDM_SEND_CHALLENGE_SUPPORT */
     return status;
 }
 

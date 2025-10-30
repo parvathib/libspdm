@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2022 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -8,6 +8,9 @@
 #include "internal/libspdm_responder_lib.h"
 
 #if LIBSPDM_ENABLE_CAPABILITY_CHAL_CAP
+
+extern uint64_t g_challenge_request_context;
+extern bool g_check_challenge_request_context;
 
 spdm_challenge_request_t m_libspdm_challenge_request1 = {
     { SPDM_MESSAGE_VERSION_11, SPDM_CHALLENGE, 0,
@@ -59,7 +62,7 @@ extern size_t libspdm_secret_lib_challenge_opaque_data_size;
  * Expected behavior: the responder accepts the request and produces a valid
  * CHALLENGE_AUTH response message.
  **/
-void libspdm_test_responder_challenge_auth_case1(void **state)
+static void rsp_challenge_auth_case1(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -126,7 +129,7 @@ void libspdm_test_responder_challenge_auth_case1(void **state)
  * Test 2:
  * Expected behavior:
  **/
-void libspdm_test_responder_challenge_auth_case2(void **state)
+static void rsp_challenge_auth_case2(void **state)
 {
 }
 
@@ -136,7 +139,7 @@ void libspdm_test_responder_challenge_auth_case2(void **state)
  * Expected behavior: the responder accepts the request, but produces an ERROR message
  * indicating the Busy state.
  **/
-void libspdm_test_responder_challenge_auth_case3(void **state)
+static void rsp_challenge_auth_case3(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -201,7 +204,7 @@ void libspdm_test_responder_challenge_auth_case3(void **state)
  * Expected behavior: the responder accepts the request, but produces an ERROR message
  * indicating the NeedResynch state.
  **/
-void libspdm_test_responder_challenge_auth_case4(void **state)
+static void rsp_challenge_auth_case4(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -268,7 +271,7 @@ void libspdm_test_responder_challenge_auth_case4(void **state)
  * Expected behavior: the responder accepts the request, but produces an ERROR message
  * indicating the ResponseNotReady state.
  **/
-void libspdm_test_responder_challenge_auth_case5(void **state)
+static void rsp_challenge_auth_case5(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -332,7 +335,7 @@ void libspdm_test_responder_challenge_auth_case5(void **state)
  * Expected behavior: the responder rejects the request, and produces an ERROR message
  * indicating the UnexpectedRequest.
  **/
-void libspdm_test_responder_challenge_auth_case6(void **state)
+static void rsp_challenge_auth_case6(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -396,7 +399,7 @@ void libspdm_test_responder_challenge_auth_case6(void **state)
  * Expected behavior: the responder accepts the request and produces a valid
  * CHALLENGE_AUTH response message.
  **/
-void libspdm_test_responder_challenge_auth_case7(void **state) {
+static void rsp_challenge_auth_case7(void **state) {
     libspdm_return_t status;
     libspdm_test_context_t    *spdm_test_context;
     libspdm_context_t  *spdm_context;
@@ -450,7 +453,7 @@ void libspdm_test_responder_challenge_auth_case7(void **state) {
  * Expected behavior: the responder rejects the request, and produces an ERROR message
  * indicating the UnexpectedRequest.
  **/
-void libspdm_test_responder_challenge_auth_case8(void **state) {
+static void rsp_challenge_auth_case8(void **state) {
     libspdm_return_t status;
     libspdm_test_context_t    *spdm_test_context;
     libspdm_context_t  *spdm_context;
@@ -504,7 +507,7 @@ void libspdm_test_responder_challenge_auth_case8(void **state) {
  * Expected behavior: the responder accepts the request and produces a valid
  * CHALLENGE_AUTH response message.
  **/
-void libspdm_test_responder_challenge_auth_case9(void **state) {
+static void rsp_challenge_auth_case9(void **state) {
     libspdm_return_t status;
     libspdm_test_context_t    *spdm_test_context;
     libspdm_context_t  *spdm_context;
@@ -546,7 +549,8 @@ void libspdm_test_responder_challenge_auth_case9(void **state) {
                                                   response);
     assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
     assert_int_equal (response_size, sizeof(spdm_challenge_auth_response_t) + libspdm_get_hash_size (
-                          m_libspdm_use_hash_algo) + SPDM_NONCE_SIZE + 0 + sizeof(uint16_t) + 0 + libspdm_get_asym_signature_size (
+                          m_libspdm_use_hash_algo) + SPDM_NONCE_SIZE + 0 + sizeof(uint16_t) + 0 +
+                      libspdm_get_asym_signature_size (
                           m_libspdm_use_asym_algo));
     spdm_response = (void *)response;
     assert_int_equal (spdm_response->header.request_response_code, SPDM_CHALLENGE_AUTH);
@@ -569,7 +573,7 @@ void libspdm_test_responder_challenge_auth_case9(void **state) {
  * Expected behavior: the responder rejects the request, and produces an ERROR message
  * indicating the UnexpectedRequest.
  **/
-void libspdm_test_responder_challenge_auth_case10(void **state) {
+static void rsp_challenge_auth_case10(void **state) {
     libspdm_return_t status;
     libspdm_test_context_t    *spdm_test_context;
     libspdm_context_t  *spdm_context;
@@ -630,7 +634,7 @@ void libspdm_test_responder_challenge_auth_case10(void **state) {
  * Expected behavior: the responder accepts the request and produces a valid
  * CHALLENGE_AUTH response message.
  **/
-void libspdm_test_responder_challenge_auth_case11(void **state) {
+static void rsp_challenge_auth_case11(void **state) {
     libspdm_return_t status;
     libspdm_test_context_t    *spdm_test_context;
     libspdm_context_t  *spdm_context;
@@ -671,7 +675,8 @@ void libspdm_test_responder_challenge_auth_case11(void **state) {
                                                   response);
     assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
     assert_int_equal (response_size, sizeof(spdm_challenge_auth_response_t) + libspdm_get_hash_size (
-                          m_libspdm_use_hash_algo) + SPDM_NONCE_SIZE + 0 + sizeof(uint16_t) + 8 + libspdm_get_asym_signature_size (
+                          m_libspdm_use_hash_algo) + SPDM_NONCE_SIZE + 0 + sizeof(uint16_t) + 8 +
+                      libspdm_get_asym_signature_size (
                           m_libspdm_use_asym_algo));
     spdm_response = (void *)response;
     assert_int_equal (spdm_response->header.request_response_code, SPDM_CHALLENGE_AUTH);
@@ -686,7 +691,7 @@ void libspdm_test_responder_challenge_auth_case11(void **state) {
  * Expected behavior: the responder accepts the request and produces a valid
  * CHALLENGE_AUTH response message.
  **/
-void libspdm_test_responder_challenge_auth_case12(void **state) {
+static void rsp_challenge_auth_case12(void **state) {
     libspdm_return_t status;
     libspdm_test_context_t    *spdm_test_context;
     libspdm_context_t  *spdm_context;
@@ -745,7 +750,7 @@ void libspdm_test_responder_challenge_auth_case12(void **state) {
  * Expected behavior: the responder accepts the request and produces a valid
  * CHALLENGE_AUTH response message.
  **/
-void libspdm_test_responder_challenge_auth_case13(void **state) {
+static void rsp_challenge_auth_case13(void **state) {
     libspdm_return_t status;
     libspdm_test_context_t    *spdm_test_context;
     libspdm_context_t  *spdm_context;
@@ -805,7 +810,7 @@ void libspdm_test_responder_challenge_auth_case13(void **state) {
  * Expected behavior: the responder refuses the CHALLENGE message and produces an
  * ERROR message indicating the InvalidRequest.
  **/
-void libspdm_test_responder_challenge_auth_case14(void **state) {
+static void rsp_challenge_auth_case14(void **state) {
     libspdm_return_t status;
     libspdm_test_context_t    *spdm_test_context;
     libspdm_context_t  *spdm_context;
@@ -861,7 +866,7 @@ void libspdm_test_responder_challenge_auth_case14(void **state) {
  * CHALLENGE_AUTH response message, and buffer C receives the exchanged CHALLENGE
  * and CHALLENGE_AUTH (without signature) messages.
  **/
-void libspdm_test_responder_challenge_auth_case15(void **state)
+static void rsp_challenge_auth_case15(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -933,7 +938,7 @@ void libspdm_test_responder_challenge_auth_case15(void **state)
  * Test 16: Receive a CHALLENGE request within a secure session.
  * Expected behavior: the Responder replies with error UnexpectedRequest as that is not legal.
  **/
-void libspdm_test_responder_challenge_auth_case16(void **state)
+static void rsp_challenge_auth_case16(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -964,7 +969,8 @@ void libspdm_test_responder_challenge_auth_case16(void **state)
     spdm_context->last_spdm_request_session_id_valid = true;
     spdm_context->last_spdm_request_session_id = session_id;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init(spdm_context, session_info, session_id, true);
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_secured_message_set_session_state(
         session_info->secured_message_context, LIBSPDM_SESSION_STATE_ESTABLISHED);
 
@@ -993,7 +999,7 @@ void libspdm_test_responder_challenge_auth_case16(void **state)
  * Expected behavior: the responder accepts the request and produces a valid
  * CHALLENGE_AUTH response message.
  **/
-void libspdm_test_responder_challenge_auth_case17(void **state)
+static void rsp_challenge_auth_case17(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -1058,9 +1064,9 @@ void libspdm_test_responder_challenge_auth_case17(void **state)
 /**
  * Test 18: Successfully reply to V1.3 to get CHALLENGE message with context field
  * no opaque data, no measurements, and slot number 0.
- * Expected Behavior: get a RETURN_SUCCESS return code, correct context field
+ * Expected Behavior: get a LIBSPDM_STATUS_SUCCESS return code, correct context field
  **/
-void libspdm_test_responder_challenge_auth_case18(void **state)
+static void rsp_challenge_auth_case18(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -1106,7 +1112,10 @@ void libspdm_test_responder_challenge_auth_case18(void **state)
     libspdm_copy_mem(request, sizeof(spdm_challenge_request_t),
                      &m_libspdm_challenge_request8, m_libspdm_challenge_request8_size);
     requester_context = request + m_libspdm_challenge_request8_size;
+
     libspdm_set_mem(requester_context, SPDM_REQ_CONTEXT_SIZE, 0xAA);
+    g_check_challenge_request_context = true;
+    g_challenge_request_context = 0xAAAAAAAA;
     m_libspdm_challenge_request8_size += SPDM_REQ_CONTEXT_SIZE;
 
     status = libspdm_get_response_challenge_auth(
@@ -1131,6 +1140,8 @@ void libspdm_test_responder_challenge_auth_case18(void **state)
                          SPDM_NONCE_SIZE + 0 + sizeof(uint16_t);
     assert_memory_equal(requester_context, responder_context, SPDM_REQ_CONTEXT_SIZE);
 
+    g_check_challenge_request_context = false;
+
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
     assert_int_equal(spdm_context->transcript.message_m.buffer_size, 0);
 #endif
@@ -1142,7 +1153,7 @@ void libspdm_test_responder_challenge_auth_case18(void **state)
  * Expected behavior: the responder accepts the request, but produces an ERROR message
  * indicating the invalid state.
  **/
-void libspdm_test_responder_challenge_auth_case19(void **state)
+static void rsp_challenge_auth_case19(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -1215,40 +1226,40 @@ void libspdm_test_responder_challenge_auth_case19(void **state)
     free(data1);
 }
 
-int libspdm_responder_challenge_auth_test_main(void)
+int libspdm_rsp_challenge_auth_test(void)
 {
-    const struct CMUnitTest spdm_responder_challenge_auth_tests[] = {
+    const struct CMUnitTest test_cases[] = {
         /* Success Case*/
-        cmocka_unit_test(libspdm_test_responder_challenge_auth_case1),
+        cmocka_unit_test(rsp_challenge_auth_case1),
         /* Can be populated with new test.*/
-        cmocka_unit_test(libspdm_test_responder_challenge_auth_case2),
+        cmocka_unit_test(rsp_challenge_auth_case2),
         /* response_state: LIBSPDM_RESPONSE_STATE_BUSY*/
-        cmocka_unit_test(libspdm_test_responder_challenge_auth_case3),
+        cmocka_unit_test(rsp_challenge_auth_case3),
         /* response_state: LIBSPDM_RESPONSE_STATE_NEED_RESYNC*/
-        cmocka_unit_test(libspdm_test_responder_challenge_auth_case4),
+        cmocka_unit_test(rsp_challenge_auth_case4),
         #if LIBSPDM_RESPOND_IF_READY_SUPPORT
         /* response_state: LIBSPDM_RESPONSE_STATE_NOT_READY*/
-        cmocka_unit_test(libspdm_test_responder_challenge_auth_case5),
+        cmocka_unit_test(rsp_challenge_auth_case5),
         #endif /* LIBSPDM_RESPOND_IF_READY_SUPPORT */
         /* connection_state Check*/
-        cmocka_unit_test(libspdm_test_responder_challenge_auth_case6),
-        cmocka_unit_test(libspdm_test_responder_challenge_auth_case7),
-        cmocka_unit_test(libspdm_test_responder_challenge_auth_case8),
-        cmocka_unit_test(libspdm_test_responder_challenge_auth_case9),
-        cmocka_unit_test(libspdm_test_responder_challenge_auth_case10),
-        cmocka_unit_test(libspdm_test_responder_challenge_auth_case11),
-        cmocka_unit_test(libspdm_test_responder_challenge_auth_case12),
-        cmocka_unit_test(libspdm_test_responder_challenge_auth_case13),
-        cmocka_unit_test(libspdm_test_responder_challenge_auth_case14),
+        cmocka_unit_test(rsp_challenge_auth_case6),
+        cmocka_unit_test(rsp_challenge_auth_case7),
+        cmocka_unit_test(rsp_challenge_auth_case8),
+        cmocka_unit_test(rsp_challenge_auth_case9),
+        cmocka_unit_test(rsp_challenge_auth_case10),
+        cmocka_unit_test(rsp_challenge_auth_case11),
+        cmocka_unit_test(rsp_challenge_auth_case12),
+        cmocka_unit_test(rsp_challenge_auth_case13),
+        cmocka_unit_test(rsp_challenge_auth_case14),
         /* Buffer verification*/
-        cmocka_unit_test(libspdm_test_responder_challenge_auth_case15),
-        cmocka_unit_test(libspdm_test_responder_challenge_auth_case16),
+        cmocka_unit_test(rsp_challenge_auth_case15),
+        cmocka_unit_test(rsp_challenge_auth_case16),
         /* using provisioned public key (slot_id 0xFF) */
-        cmocka_unit_test(libspdm_test_responder_challenge_auth_case17),
+        cmocka_unit_test(rsp_challenge_auth_case17),
         /* Success Case: V1.3 get a correct context field */
-        cmocka_unit_test(libspdm_test_responder_challenge_auth_case18),
+        cmocka_unit_test(rsp_challenge_auth_case18),
         /* The key usage bit mask is not set, failed Case*/
-        cmocka_unit_test(libspdm_test_responder_challenge_auth_case19),
+        cmocka_unit_test(rsp_challenge_auth_case19),
 
     };
 
@@ -1259,7 +1270,7 @@ int libspdm_responder_challenge_auth_test_main(void)
 
     libspdm_setup_test_context(&test_context);
 
-    return cmocka_run_group_tests(spdm_responder_challenge_auth_tests,
+    return cmocka_run_group_tests(test_cases,
                                   libspdm_unit_test_group_setup,
                                   libspdm_unit_test_group_teardown);
 }

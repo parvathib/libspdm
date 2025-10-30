@@ -67,12 +67,12 @@ size_t m_libspdm_get_endpoint_info_request4_size =
 
 /**
  * Test 1: Successful response to get endpoint_info with signature
- * Expected Behavior: get a RETURN_SUCCESS return code,
+ * Expected Behavior: get a LIBSPDM_STATUS_SUCCESS return code,
  *                    correct transcript.message_e size,
  *                    correct response message size and fields
  *                    correct signature verification
  **/
-void libspdm_test_responder_endpoint_info_case1(void **state)
+static void rsp_endpoint_info_case1(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -185,12 +185,12 @@ void libspdm_test_responder_endpoint_info_case1(void **state)
 
 /**
  * Test 2: Successful response to get endpoint_info with signature, slot_id == 0xF
- * Expected Behavior: get a RETURN_SUCCESS return code,
+ * Expected Behavior: get a LIBSPDM_STATUS_SUCCESS return code,
  *                    correct transcript.message_e size,
  *                    correct response message size and fields
  *                    correct signature verification
  **/
-void libspdm_test_responder_endpoint_info_case2(void **state)
+static void rsp_endpoint_info_case2(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -283,12 +283,12 @@ void libspdm_test_responder_endpoint_info_case2(void **state)
 /**
  * Test 3: Successful response to get endpoint_info with signature,
  *          multi_key_conn_rsp is set, slot_id = 0x1
- * Expected Behavior: get a RETURN_SUCCESS return code,
+ * Expected Behavior: get a LIBSPDM_STATUS_SUCCESS return code,
  *                    correct transcript.message_e size,
  *                    correct response message size and fields
  *                    correct signature verification
  **/
-void libspdm_test_responder_endpoint_info_case3(void **state)
+static void rsp_endpoint_info_case3(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -405,10 +405,10 @@ void libspdm_test_responder_endpoint_info_case3(void **state)
 
 /**
  * Test 4: Successful response to get endpoint_info without signature
- * Expected Behavior: get a RETURN_SUCCESS return code,
+ * Expected Behavior: get a LIBSPDM_STATUS_SUCCESS return code,
  *                    correct response message size and fields
  **/
-void libspdm_test_responder_endpoint_info_case4(void **state)
+static void rsp_endpoint_info_case4(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -465,12 +465,12 @@ void libspdm_test_responder_endpoint_info_case4(void **state)
 
 /**
  * Test 5: Successful response to get session-based endpoint_info with signature
- * Expected Behavior: get a RETURN_SUCCESS return code,
+ * Expected Behavior: get a LIBSPDM_STATUS_SUCCESS return code,
  *                    correct transcript.message_e size,
  *                    correct response message size and fields
  *                    correct signature verification
  **/
-void libspdm_test_responder_endpoint_info_case5(void **state)
+static void rsp_endpoint_info_case5(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -510,7 +510,8 @@ void libspdm_test_responder_endpoint_info_case5(void **state)
     spdm_context->last_spdm_request_session_id_valid = true;
     spdm_context->last_spdm_request_session_id = session_id;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init(spdm_context, session_info, session_id, true);
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_secured_message_set_session_state(
         session_info->secured_message_context,
         LIBSPDM_SESSION_STATE_ESTABLISHED);
@@ -592,14 +593,14 @@ void libspdm_test_responder_endpoint_info_case5(void **state)
     assert_true(result);
 }
 
-int libspdm_responder_endpoint_info_test_main(void)
+int libspdm_rsp_endpoint_info_test(void)
 {
-    const struct CMUnitTest spdm_responder_endpoint_info_tests[] = {
-        cmocka_unit_test(libspdm_test_responder_endpoint_info_case1),
-        cmocka_unit_test(libspdm_test_responder_endpoint_info_case2),
-        cmocka_unit_test(libspdm_test_responder_endpoint_info_case3),
-        cmocka_unit_test(libspdm_test_responder_endpoint_info_case4),
-        cmocka_unit_test(libspdm_test_responder_endpoint_info_case5),
+    const struct CMUnitTest test_cases[] = {
+        cmocka_unit_test(rsp_endpoint_info_case1),
+        cmocka_unit_test(rsp_endpoint_info_case2),
+        cmocka_unit_test(rsp_endpoint_info_case3),
+        cmocka_unit_test(rsp_endpoint_info_case4),
+        cmocka_unit_test(rsp_endpoint_info_case5),
     };
 
     libspdm_test_context_t test_context = {
@@ -609,7 +610,7 @@ int libspdm_responder_endpoint_info_test_main(void)
 
     libspdm_setup_test_context(&test_context);
 
-    return cmocka_run_group_tests(spdm_responder_endpoint_info_tests,
+    return cmocka_run_group_tests(test_cases,
                                   libspdm_unit_test_group_setup,
                                   libspdm_unit_test_group_teardown);
 }

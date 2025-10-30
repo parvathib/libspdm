@@ -18,7 +18,7 @@ bool libspdm_fips_selftest_rsa_pss(void *fips_selftest_context)
 {
     bool result = true;
 
-#if (LIBSPDM_RSA_PSS_SUPPORT) && (LIBSPDM_SHA256_SUPPORT)
+#if LIBSPDM_RSA_PSS_SUPPORT
     libspdm_fips_selftest_context_t *context = fips_selftest_context;
     LIBSPDM_ASSERT(fips_selftest_context != NULL);
 
@@ -32,7 +32,7 @@ bool libspdm_fips_selftest_rsa_pss(void *fips_selftest_context)
         return true;
     }
 
-    uint8_t signature[LIBSPDM_MAX_ASYM_KEY_SIZE];
+    uint8_t signature[512];
     uint8_t digest[LIBSPDM_MAX_HASH_SIZE];
     size_t sig_size;
     void *rsa;
@@ -201,7 +201,7 @@ update:
         context->self_test_result &= ~LIBSPDM_FIPS_SELF_TEST_RSA_PSS;
     }
 
-#endif/*(LIBSPDM_RSA_PSS_SUPPORT) && (LIBSPDM_SHA256_SUPPORT)*/
+#endif/*LIBSPDM_RSA_PSS_SUPPORT*/
 
     return result;
 }

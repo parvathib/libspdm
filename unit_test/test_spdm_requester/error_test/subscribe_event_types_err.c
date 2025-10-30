@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2024 DMTF. All rights reserved.
+ *  Copyright 2024-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -51,7 +51,8 @@ static void set_standard_state(libspdm_context_t *spdm_context, uint32_t *sessio
 
     *session_id = m_session_id;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init(spdm_context, session_info, *session_id, true);
+    libspdm_session_info_init(spdm_context, session_info, *session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_secured_message_set_session_state(
         session_info->secured_message_context, LIBSPDM_SESSION_STATE_ESTABLISHED);
 }
@@ -232,7 +233,7 @@ static void libspdm_test_requester_subscribe_event_types_err_case3(void **state)
     assert_int_equal(status, LIBSPDM_STATUS_UNSUPPORTED_CAP);
 }
 
-int libspdm_requester_subscribe_event_types_error_test_main(void)
+int libspdm_req_subscribe_event_types_error_test(void)
 {
     libspdm_test_context_t test_context = {
         LIBSPDM_TEST_CONTEXT_VERSION,
@@ -241,7 +242,7 @@ int libspdm_requester_subscribe_event_types_error_test_main(void)
         receive_message,
     };
 
-    const struct CMUnitTest spdm_requester_get_event_types_tests[] = {
+    const struct CMUnitTest test_cases[] = {
         cmocka_unit_test(libspdm_test_requester_subscribe_event_types_err_case1),
         cmocka_unit_test(libspdm_test_requester_subscribe_event_types_err_case2),
         cmocka_unit_test(libspdm_test_requester_subscribe_event_types_err_case3)
@@ -249,7 +250,7 @@ int libspdm_requester_subscribe_event_types_error_test_main(void)
 
     libspdm_setup_test_context(&test_context);
 
-    return cmocka_run_group_tests(spdm_requester_get_event_types_tests,
+    return cmocka_run_group_tests(test_cases,
                                   libspdm_unit_test_group_setup,
                                   libspdm_unit_test_group_teardown);
 }

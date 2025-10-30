@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2024 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -61,15 +61,15 @@ libspdm_session_state_t libspdm_secured_message_get_session_state(
     void *spdm_secured_message_context);
 
 /**
- * Import the DHE Secret to an SPDM secured message context.
+ * Import the Shared Secret to an SPDM secured message context.
  *
  * @param  spdm_secured_message_context  A pointer to the SPDM secured message context.
- * @param  dhe_secret                    Indicate the DHE secret.
- * @param  dhe_secret_size               The size, in bytes, of the DHE secret.
+ * @param  shared_secret                 Indicate the shared secret.
+ * @param  shared_secret_size            The size, in bytes, of the shared secret.
  */
-bool libspdm_secured_message_import_dhe_secret(void *spdm_secured_message_context,
-                                               const void *dhe_secret,
-                                               size_t dhe_secret_size);
+bool libspdm_secured_message_import_shared_secret(void *spdm_secured_message_context,
+                                                  const void *shared_secret,
+                                                  size_t shared_secret_size);
 
 /**
  * Export the Export Master Secret from an SPDM secured message context.
@@ -251,9 +251,6 @@ typedef struct {
  * @param  secured_message                 A pointer to a destination buffer to store the secured message.
  *                                         It shall point to the acquired sender buffer.
  * @param  spdm_secured_message_callbacks  A pointer to a secured message callback functions structure.
- *
- * @retval RETURN_SUCCESS               The application message is encoded successfully.
- * @retval RETURN_INVALID_PARAMETER     The message is NULL or the message_size is zero.
  **/
 libspdm_return_t libspdm_encode_secured_message(
     void *spdm_secured_message_context, uint32_t session_id,
@@ -277,10 +274,6 @@ libspdm_return_t libspdm_encode_secured_message(
  *                                         On input, the app_message pointer shall point to a big enough buffer to hold the decrypted message
  *                                         On output, the app_message pointer shall be inside of [app_message, app_message + app_message_size]
  * @param  spdm_secured_message_callbacks  A pointer to a secured message callback functions structure.
- *
- * @retval RETURN_SUCCESS               The application message is decoded successfully.
- * @retval RETURN_INVALID_PARAMETER     The message is NULL or the message_size is zero.
- * @retval RETURN_UNSUPPORTED           The secured_message is unsupported.
  **/
 libspdm_return_t libspdm_decode_secured_message(
     void *spdm_secured_message_context, uint32_t session_id,

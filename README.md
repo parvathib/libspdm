@@ -16,6 +16,14 @@
 
    [DSP0276](https://www.dmtf.org/dsp/DSP0276)  Secured Messages using SPDM over MCTP Binding Specification (version [1.2.0](https://www.dmtf.org/sites/default/files/standards/documents/DSP0276_1.2.0.pdf))
 
+   Storage Binding follows :
+
+   [DSP0286](https://www.dmtf.org/dsp/DSP0286)  Security Protocol and Data Model (SPDM) to Storage Binding Specification (version [1.0.0](https://www.dmtf.org/sites/default/files/standards/documents/DSP0286_1.0.0.pdf))
+
+   TCP Binding follows :
+
+   [DSP0287](https://www.dmtf.org/dsp/DSP0287)  SPDM over TCP Binding Specification (version [1.0.0](https://www.dmtf.org/sites/default/files/standards/documents/DSP0287_1.0.0.pdf))
+
    PCIe follows :
 
    PCI Express Base Specification [Revision 6.2](https://members.pcisig.com/wg/PCI-SIG/document/20590)
@@ -42,19 +50,23 @@
 
    SPDM 1.2: `GET_CSR`, `SET_CERTIFICATE`, `CHUNK_SEND`, and `CHUNK_GET`.
 
-   SPDM 1.3: `GET_KEY_PAIR_INFO`, `SET_KEY_PAIR_INFO`, `SUBSCRIBE_EVENT_TYPE`, `GET_SUPPORTED_EVENT_TYPES` and `GET_MEASUREMENT_EXTENSION_LOG`. Additional SPDM 1.3 messages will be implemented in future releases.
+   SPDM 1.3: `GET_KEY_PAIR_INFO`, `SET_KEY_PAIR_INFO`, `SUBSCRIBE_EVENT_TYPE`, `GET_SUPPORTED_EVENT_TYPES`, `GET_ENDPOINT_INFO` and `GET_MEASUREMENT_EXTENSION_LOG`. Additional SPDM 1.3 messages will be implemented in future releases.
 
 5) Cryptography Support
 
    The SPDM library requires [cryptolib API](https://github.com/DMTF/libspdm/blob/main/include/hal/library/cryptlib.h), including random number generation, symmetric cryptography, asymmetric cryptography, hash, and message authentication code.
 
-   Currently supported algorithms: Hash:SHA2/SHA3/SM3, Signature:RSA-SSA/RSA-PSS/ECDSA/EdDSA/SM2-Sign, KeyExchange:FFDHE/ECDHE/SM2-KeyExchange, AEAD:AES_GCM/ChaCha20Poly1305/SM4_GCM.
+   Currently supported traditional algorithms: Hash:SHA2/SHA3/SM3, Signature:RSA-SSA/RSA-PSS/ECDSA/EdDSA/SM2-Sign, KeyExchange:FFDHE/ECDHE/SM2-KeyExchange, AEAD:AES_GCM/ChaCha20Poly1305/SM4_GCM.
+   Currently supported PQC algorithms: Signature:ML-DSA/SLH-DSA, KeyEncapsulation:ML-KEM.
    NOTE: NIST algorithms and Shang-Mi (SM) algorithms should not be mixed together.
+
+   ML-DSA OID is defined in [IETF Algorithm Identifiers for ML-DSA (Draft)](https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates).
+   SLH-DSA OID is defined in [IETF Algorithm Identifiers for SLH-DSA (Draft)](https://datatracker.ietf.org/doc/draft-ietf-lamps-x509-slhdsa).
 
    The endianness is defined in [crypto_endianness](https://github.com/DMTF/libspdm/blob/main/doc/crypto_endianness.md).
 
    An [Mbed TLS](https://tls.mbed.org/) wrapper is included in [cryptlib_mbedtls](https://github.com/DMTF/libspdm/tree/main/os_stub/cryptlib_mbedtls).
-   NOTE: SMx and EdDSA are not supported.
+   NOTE: SMx, EdDSA, ML-DSA, SLH-DSA and ML-KEM are not supported.
 
    An [OpenSSL](https://www.openssl.org/) wrapper is included in [cryptlib_openssl](https://github.com/DMTF/libspdm/tree/main/os_stub/cryptlib_openssl).
    NOTE: SM2-KeyExchange and SM4_GCM are not supported.
@@ -79,7 +91,7 @@
 
    Support is included in [wolfSSL](https://www.wolfssl.com/wolfssl-libspdm-support).
 
-   Support to be included in [OpenBMC](https://github.com/openbmc). It is in planning, see [SPDM Integration](https://www.youtube.com/watch?v=PmgXkLJYI-E).
+   Support is planned to be included in [OpenBMC](https://github.com/openbmc/spdm). Details of the design for exposing measurements and certificate chains of SPDM-capable devices via Redfish are described in the [OpenBMC SPDM Attestation Design](https://github.com/openbmc/docs/blob/master/designs/redfish-spdm-attestation.md).
 
    Support to be linked by other languages. For example, [Java verifier](https://github.com/altera-opensource/verifier) and [Rust spdm-utils](https://github.com/westerndigitalcorporation/spdm-utils).
 
@@ -96,19 +108,20 @@
 | [GCC](https://gcc.gnu.org/) | gcc  | gcc |  -  |    -    |    -    |    -    |
 | [CLANG](https://llvm.org/) | clang-cl | clang-cl |  -  |    -    |    -    |    -    |
 
-| Linux System    | ia32 | x64 | arm | aarch64 | riscv32 | riscv64 |
-| --------------- | ---- | --- | --- | ------- | ------- | ------- |
-| [GCC](https://gcc.gnu.org/) | gcc  | gcc |  -  |    -    |    -    |    -    |
-| [CLANG](https://llvm.org/) | clang|clang|  -  |    -    |    -    |    -    |
-| [ARM_DS2022](https://developer.arm.com/downloads/-/arm-development-studio-downloads) |  -   |  -  | armclang | armclang |    -    |    -    |
-| [ARM_GNU](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads) |  -   |  -  | arm-none-linux-gnueabihf-gcc | aarch64-none-linux-gnu-gcc |    -    |    -    |
-| [ARM_GNU_BARE_METAL](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads) |  -   |  -  | arm-none-eabi | aarch64-none-elf |    -    |    -    |
-| [ARM_GCC](https://packages.ubuntu.com/bionic/gcc-arm-linux-gnueabi) |  -   |  -  | arm-linux-gnueabi-gcc |    -    |    -    |    -    |
-| [AARCH64_GCC](https://packages.ubuntu.com/bionic/gcc-aarch64-linux-gnu) |  -   |  -  |  -  | aarch64-linux-gnu-gcc |    -    |    -    |
-| [RISCV_GNU](https://github.com/riscv/riscv-gnu-toolchain) |  -   |  -  |  -  |    -    | riscv32-unknown-linux-gnu-gcc | riscv64-unknown-linux-gnu-gcc |
-| [RISCV64_GCC](https://packages.ubuntu.com/bionic/gcc-riscv64-linux-gnu) |  -   |  -  |  -  |    -    |    -    | riscv64-linux-gnu-gcc |
-| [RISCV_XPACK](https://github.com/xpack-dev-tools/riscv-none-elf-gcc-xpack) |  -   |  -  |  -  |    -    | riscv-none-elf-gcc | riscv-none-elf-gcc |
-| [RISCV_NONE](https://archlinux.org/packages/extra/x86_64/riscv64-elf-gcc/) |  -   |  -  |  -  |    -    | riscv64-elf-gcc | riscv64-elf-gcc |
+| Linux System    | ia32 | x64 | arm | aarch64 | riscv32 | riscv64 | loongarch64 |
+| --------------- | ---- | --- | --- | ------- | ------- | ------- | ----------- |
+| [GCC](https://gcc.gnu.org/) | gcc  | gcc |  -  |    -    |    -    |    -    |    -    |
+| [CLANG](https://llvm.org/) | clang|clang|  -  |    -    |    -    |    -    |    -    |
+| [ARM_DS2022](https://developer.arm.com/downloads/-/arm-development-studio-downloads) |  -   |  -  | armclang | armclang |    -    |    -    |    -    |
+| [ARM_GNU](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads) |  -   |  -  | arm-none-linux-gnueabihf-gcc | aarch64-none-linux-gnu-gcc |    -    |    -    |    -    |
+| [ARM_GNU_BARE_METAL](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads) |  -   |  -  | arm-none-eabi | aarch64-none-elf |    -    |    -    |    -    |
+| [ARM_GCC](https://pkgs.org/download/gcc-arm-linux-gnueabi) |  -   |  -  | arm-linux-gnueabi-gcc |    -    |    -    |    -    |    -    |
+| [AARCH64_GCC](https://pkgs.org/download/gcc-aarch64-linux-gnu) |  -   |  -  |  -  | aarch64-linux-gnu-gcc |    -    |    -    |    -    |
+| [RISCV_GNU](https://github.com/riscv/riscv-gnu-toolchain) |  -   |  -  |  -  |    -    | riscv32-unknown-linux-gnu-gcc | riscv64-unknown-linux-gnu-gcc |    -    |
+| [RISCV64_GCC](https://pkgs.org/download/gcc-riscv64-linux-gnu) |  -   |  -  |  -  |    -    |    -    | riscv64-linux-gnu-gcc |    -    |
+| [RISCV_XPACK](https://github.com/xpack-dev-tools/riscv-none-elf-gcc-xpack) |  -   |  -  |  -  |    -    | riscv-none-elf-gcc | riscv-none-elf-gcc |    -    |
+| [RISCV_NONE](https://archlinux.org/packages/extra/x86_64/riscv64-elf-gcc/) |  -   |  -  |  -  |    -    | riscv64-elf-gcc | riscv64-elf-gcc |    -    |
+| [LOONGARCH64_GNU](https://github.com/loongson/build-tools/) |  -   |  -  |  -  |    -    | - | - | loongarch64-unknown-linux-gnu-gcc |
 
 8) Static Analysis
 
@@ -171,9 +184,9 @@ For other architectures, refer to [build](https://github.com/DMTF/libspdm/blob/m
 
 ### Cryptography Library
 
-1) [Mbed TLS](https://tls.mbed.org) as cryptography library. Version 3.6.2.
+1) [Mbed TLS](https://tls.mbed.org) as cryptography library. Version 3.6.4.
 
-2) [OpenSSL](https://www.openssl.org) as cryptography library. Version 3.0.14.
+2) [OpenSSL](https://www.openssl.org) as cryptography library. Version 3.5.1.
 
 ### Unit Test framework
 
@@ -297,13 +310,17 @@ For other architectures, refer to [build](https://github.com/DMTF/libspdm/blob/m
    </pre>
 
    Note: You must use a command prompt with the current working directory at `libspdm/build/bin` when running unit tests or they may fail.
-   Eg. Don't run the unit tests from libsdpm/build directory by calling "bin/test_spdm_responder > NULL"
+   Eg. Don't run the unit tests from libspdm/build directory by calling "bin/test_spdm_responder > NULL"
 
 ### Other Tests
 
   libspdm also supports other tests such as code coverage, fuzzing, symbolic execution, and model checker.
 
   Refer to [test](https://github.com/DMTF/libspdm/blob/main/doc/test.md) for more details.
+
+### Unit Test Code Coverage Report
+
+The weekly unit test code coverage report is at https://dmtf.github.io/libspdm/coverage_log/.
 
 ## Associated Repositories
 

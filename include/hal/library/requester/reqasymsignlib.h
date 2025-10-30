@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2023-2024 DMTF. All rights reserved.
+ *  Copyright 2023-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -10,12 +10,15 @@
 #include "hal/base.h"
 #include "internal/libspdm_lib_config.h"
 
-#if LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP
+#if (LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP) || (LIBSPDM_ENABLE_CAPABILITY_ENDPOINT_INFO_CAP)
 /**
  * Sign an SPDM message data.
  *
  * @param  spdm_context      A pointer to the SPDM context.
- * @param  spdm_version      Indicates the negotiated s version.
+ * @param  spdm_version      Indicates the negotiated version.
+ * @param  key_pair_id       Indicates the key_pair_id in multi-key use case.
+ *                           It should be 0, if (SPDM version is < 1.3) OR
+ *                           ((SPDM version is >= 1.3) AND (LIBSPDM_DATA_MULTI_KEY_CONN_REQ is false))
  * @param  req_base_asym_alg Indicates the signing algorithm.
  * @param  base_hash_algo    Indicates the hash algorithm.
  * @param  is_data_hash      Indicates the message type.
@@ -33,12 +36,10 @@
  * @retval false signing fail.
  **/
 extern bool libspdm_requester_data_sign(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
     void *spdm_context,
-#endif
     spdm_version_number_t spdm_version,
-    uint8_t op_code,
-    uint16_t req_base_asym_alg,
+    uint8_t key_pair_id, uint8_t op_code,
+    uint16_t req_base_asym_alg, uint32_t req_pqc_asym_alg,
     uint32_t base_hash_algo, bool is_data_hash,
     const uint8_t *message, size_t message_size,
     uint8_t *signature, size_t *sig_size);
@@ -48,12 +49,12 @@ extern bool libspdm_requester_data_sign(
  * This functions returns the opaque data in a CHALLENGE_AUTH response.
  *
  * @param  spdm_context  A pointer to the SPDM context.
- * @param  spdm_version  Indicates the negotiated s version.
+ * @param  spdm_version  Indicates the negotiated version.
  *
- * @param  slot_id       The number of slot for the certificate chain.
- *
- * @param  measurement_summary_hash        The measurement summary hash.
- * @param  measurement_summary_hash_size   The size of measurement summary hash.
+ * @param  slot_id               The number of slot for the certificate chain.
+ * @param  request_context_size  The size, in bytes, of request_context.
+ * @param  request_context       If spdm_version is greater than 1.2, then it is a pointer to the
+ *                               Context field in the request message, else it is NULL and ignored.
  *
  * @param opaque_data
  * A pointer to a destination buffer whose size, in bytes, is opaque_data_size. The opaque data is
@@ -64,17 +65,14 @@ extern bool libspdm_requester_data_sign(
  * On output, indicates the size of the opaque data.
  **/
 extern bool libspdm_encap_challenge_opaque_data(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
     void *spdm_context,
-#endif
     spdm_version_number_t spdm_version,
     uint8_t slot_id,
-    uint8_t *measurement_summary_hash,
-    size_t measurement_summary_hash_size,
+    size_t request_context_size,
+    const void *request_context,
     void *opaque_data,
     size_t *opaque_data_size);
 #endif/*LIBSPDM_ENABLE_CAPABILITY_CHAL_CAP*/
-
-#endif /* LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP */
+#endif /* (LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP) || (...) */
 
 #endif /* REQUESTER_REQASYMSIGNLIB_H */

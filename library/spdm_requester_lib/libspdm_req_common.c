@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2024 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -108,18 +108,13 @@ void libspdm_build_opaque_data_supported_version_data(libspdm_context_t *spdm_co
  *
  * @param  data_in_size                   size in bytes of the data_in.
  * @param  data_in                       A pointer to the buffer to store the opaque data version selection.
- *
- * @retval RETURN_SUCCESS               The opaque data version selection is processed successfully.
- * @retval RETURN_UNSUPPORTED           The data_in is NOT opaque data version selection.
  **/
-libspdm_return_t libspdm_process_opaque_data_version_selection_data(libspdm_context_t *spdm_context,
-                                                                    size_t data_in_size,
-                                                                    void *data_in)
+libspdm_return_t libspdm_process_opaque_data_version_selection_data(
+    libspdm_context_t *spdm_context, size_t data_in_size, void *data_in,
+    spdm_version_number_t *secured_message_version)
 {
-    const secured_message_opaque_element_table_header_t
-    *opaque_element_table_header;
-    const secured_message_opaque_element_version_selection_t
-    *opaque_element_version_section;
+    const secured_message_opaque_element_table_header_t *opaque_element_table_header;
+    const secured_message_opaque_element_version_selection_t *opaque_element_version_section;
 
     bool result;
     uint8_t secured_message_version_index;
@@ -170,8 +165,8 @@ libspdm_return_t libspdm_process_opaque_data_version_selection_data(libspdm_cont
             libspdm_get_version_from_version_number(
                 spdm_context->local_context.secured_message_version.spdm_version[
                     secured_message_version_index])) {
-            libspdm_copy_mem(&(spdm_context->connection_info.secured_message_version),
-                             sizeof(spdm_context->connection_info.secured_message_version),
+            libspdm_copy_mem(secured_message_version,
+                             sizeof(spdm_version_number_t),
                              &(opaque_element_version_section->selected_version),
                              sizeof(spdm_version_number_t));
             return LIBSPDM_STATUS_SUCCESS;

@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2022 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -188,7 +188,7 @@ typedef struct {
 
 typedef struct {
     spdm_message_header_t header;
-    uint8_t signature[LIBSPDM_MAX_ASYM_KEY_SIZE];
+    uint8_t signature[LIBSPDM_MAX_ASYM_SIG_SIZE];
     uint8_t verify_data[LIBSPDM_MAX_HASH_SIZE];
 } libspdm_finish_request_mine_t;
 
@@ -285,7 +285,7 @@ static void libspdm_secured_message_set_request_finished_key(
  * Expected behavior: the responder accepts the request and produces a valid DIGESTS
  * response message.
  **/
-void libspdm_test_responder_respond_if_ready_case1(void **state) {
+static void rsp_respond_if_ready_case1(void **state) {
     libspdm_return_t status;
     libspdm_test_context_t    *spdm_test_context;
     libspdm_context_t  *spdm_context;
@@ -353,7 +353,7 @@ void libspdm_test_responder_respond_if_ready_case1(void **state) {
 
 #if LIBSPDM_ENABLE_CAPABILITY_CERT_CAP
 
-void libspdm_test_responder_respond_if_ready_case2(void **state) {
+static void rsp_respond_if_ready_case2(void **state) {
     libspdm_return_t status;
     libspdm_test_context_t    *spdm_test_context;
     libspdm_context_t  *spdm_context;
@@ -427,7 +427,7 @@ void libspdm_test_responder_respond_if_ready_case2(void **state) {
  * response message.
  **/
 #if LIBSPDM_ENABLE_CAPABILITY_CHAL_CAP
-void libspdm_test_responder_respond_if_ready_case3(void **state) {
+static void rsp_respond_if_ready_case3(void **state) {
     libspdm_return_t status;
     libspdm_test_context_t    *spdm_test_context;
     libspdm_context_t  *spdm_context;
@@ -489,7 +489,8 @@ void libspdm_test_responder_respond_if_ready_case3(void **state) {
                                                    response);
     assert_int_equal (status, LIBSPDM_STATUS_SUCCESS);
     assert_int_equal (response_size, sizeof(spdm_challenge_auth_response_t) + libspdm_get_hash_size (
-                          m_libspdm_use_hash_algo) + SPDM_NONCE_SIZE + 0 + sizeof(uint16_t) + 0 + libspdm_get_asym_signature_size (
+                          m_libspdm_use_hash_algo) + SPDM_NONCE_SIZE + 0 + sizeof(uint16_t) + 0 +
+                      libspdm_get_asym_signature_size (
                           m_libspdm_use_asym_algo));
     spdm_response = (void *)response;
     assert_int_equal (spdm_response->header.request_response_code, SPDM_CHALLENGE_AUTH);
@@ -510,7 +511,7 @@ void libspdm_test_responder_respond_if_ready_case3(void **state) {
 
 extern size_t libspdm_secret_lib_meas_opaque_data_size;
 
-void libspdm_test_responder_respond_if_ready_case4(void **state) {
+static void rsp_respond_if_ready_case4(void **state) {
     libspdm_return_t status;
     libspdm_test_context_t    *spdm_test_context;
     libspdm_context_t  *spdm_context;
@@ -579,7 +580,7 @@ void libspdm_test_responder_respond_if_ready_case4(void **state) {
  **/
 #if LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP
 
-void libspdm_test_responder_respond_if_ready_case5(void **state) {
+static void rsp_respond_if_ready_case5(void **state) {
     libspdm_return_t status;
     libspdm_test_context_t    *spdm_test_context;
     libspdm_context_t  *spdm_context;
@@ -668,7 +669,9 @@ void libspdm_test_responder_respond_if_ready_case5(void **state) {
                                                    &response_size,
                                                    response);
     assert_int_equal (status, LIBSPDM_STATUS_SUCCESS);
-    assert_int_equal (response_size, sizeof(spdm_key_exchange_response_t) + dhe_key_size + 2 + libspdm_get_opaque_data_version_selection_data_size(
+    assert_int_equal (response_size,
+                      sizeof(spdm_key_exchange_response_t) + dhe_key_size + 2 +
+                      libspdm_get_opaque_data_version_selection_data_size(
                           spdm_context) + libspdm_get_asym_signature_size (
                           m_libspdm_use_asym_algo) +
                       libspdm_get_hash_size (m_libspdm_use_hash_algo));
@@ -692,7 +695,7 @@ void libspdm_test_responder_respond_if_ready_case5(void **state) {
  **/
 #if LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP
 
-void libspdm_test_responder_respond_if_ready_case6(void **state) {
+static void rsp_respond_if_ready_case6(void **state) {
     libspdm_return_t status;
     libspdm_test_context_t    *spdm_test_context;
     libspdm_context_t  *spdm_context;
@@ -752,7 +755,8 @@ void libspdm_test_responder_respond_if_ready_case6(void **state) {
     session_id = 0xFFFFFFFF;
     spdm_context->latest_session_id = session_id;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init (spdm_context, session_info, session_id, false);
+    libspdm_session_info_init (spdm_context, session_info, session_id,
+                               SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, false);
     hash_size = libspdm_get_hash_size (m_libspdm_use_hash_algo);
     libspdm_set_mem (dummy_buffer, hash_size, (uint8_t)(0xFF));
     libspdm_secured_message_set_request_finished_key (session_info->secured_message_context,
@@ -817,7 +821,7 @@ void libspdm_test_responder_respond_if_ready_case6(void **state) {
  **/
 #if LIBSPDM_ENABLE_CAPABILITY_PSK_CAP
 
-void libspdm_test_responder_respond_if_ready_case7(void **state) {
+static void rsp_respond_if_ready_case7(void **state) {
     libspdm_return_t status;
     libspdm_test_context_t    *spdm_test_context;
     libspdm_context_t  *spdm_context;
@@ -904,7 +908,9 @@ void libspdm_test_responder_respond_if_ready_case7(void **state) {
                                                    &response_size,
                                                    response);
     assert_int_equal (status, LIBSPDM_STATUS_SUCCESS);
-    assert_int_equal (response_size, sizeof(spdm_psk_exchange_response_t) + LIBSPDM_PSK_CONTEXT_LENGTH + libspdm_get_opaque_data_version_selection_data_size(
+    assert_int_equal (response_size,
+                      sizeof(spdm_psk_exchange_response_t) + LIBSPDM_PSK_CONTEXT_LENGTH +
+                      libspdm_get_opaque_data_version_selection_data_size(
                           spdm_context) + libspdm_get_hash_size (m_libspdm_use_hash_algo));
     assert_int_equal (libspdm_secured_message_get_session_state (spdm_context->session_info[0].
                                                                  secured_message_context),
@@ -924,7 +930,7 @@ void libspdm_test_responder_respond_if_ready_case7(void **state) {
  * response message.
  **/
 #if LIBSPDM_ENABLE_CAPABILITY_PSK_CAP
-void libspdm_test_responder_respond_if_ready_case8(void **state) {
+static void rsp_respond_if_ready_case8(void **state) {
     libspdm_return_t status;
     libspdm_test_context_t    *spdm_test_context;
     libspdm_context_t  *spdm_context;
@@ -981,7 +987,8 @@ void libspdm_test_responder_respond_if_ready_case8(void **state) {
     spdm_context->last_spdm_request_session_id_valid = true;
     spdm_context->last_spdm_request_session_id = session_id;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init (spdm_context, session_info, session_id, true);
+    libspdm_session_info_init (spdm_context, session_info, session_id,
+                               SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_session_info_set_psk_hint(session_info,
                                       LIBSPDM_TEST_PSK_HINT_STRING,
                                       sizeof(LIBSPDM_TEST_PSK_HINT_STRING));
@@ -1043,7 +1050,7 @@ void libspdm_test_responder_respond_if_ready_case8(void **state) {
  * Test 9:
  * Expected behavior:
  **/
-void libspdm_test_responder_respond_if_ready_case9(void **state) {
+static void rsp_respond_if_ready_case9(void **state) {
 }
 
 #endif /* LIBSPDM_ENABLE_CAPABILITY_CERT_CAP*/
@@ -1055,7 +1062,7 @@ void libspdm_test_responder_respond_if_ready_case9(void **state) {
  * Expected behavior: the responder accepts the request, but produces an ERROR message
  * indicating the Busy state.
  **/
-void libspdm_test_responder_respond_if_ready_case10(void **state) {
+static void rsp_respond_if_ready_case10(void **state) {
     libspdm_return_t status;
     libspdm_test_context_t    *spdm_test_context;
     libspdm_context_t  *spdm_context;
@@ -1118,7 +1125,7 @@ void libspdm_test_responder_respond_if_ready_case10(void **state) {
  * Expected behavior: the responder accepts the request, but produces an ERROR message
  * indicating the NeedResynch state.
  **/
-void libspdm_test_responder_respond_if_ready_case11(void **state) {
+static void rsp_respond_if_ready_case11(void **state) {
     libspdm_return_t status;
     libspdm_test_context_t    *spdm_test_context;
     libspdm_context_t  *spdm_context;
@@ -1182,7 +1189,7 @@ void libspdm_test_responder_respond_if_ready_case11(void **state) {
  * Expected behavior: the responder accepts the request, but produces an ERROR message
  * indicating the ResponseNotReady state, with the same token as the request.
  **/
-void libspdm_test_responder_respond_if_ready_case12(void **state) {
+static void rsp_respond_if_ready_case12(void **state) {
     libspdm_return_t status;
     libspdm_test_context_t    *spdm_test_context;
     libspdm_context_t  *spdm_context;
@@ -1251,7 +1258,7 @@ void libspdm_test_responder_respond_if_ready_case12(void **state) {
  * Expected behavior: the responder refuses the RESPOND_IF_READY message and produces an
  * ERROR message indicating the InvalidRequest.
  **/
-void libspdm_test_responder_respond_if_ready_case13(void **state) {
+static void rsp_respond_if_ready_case13(void **state) {
     libspdm_return_t status;
     libspdm_test_context_t    *spdm_test_context;
     libspdm_context_t  *spdm_context;
@@ -1312,7 +1319,7 @@ void libspdm_test_responder_respond_if_ready_case13(void **state) {
  * Expected behavior: the responder refuses the RESPOND_IF_READY message and produces an
  * ERROR message indicating the InvalidRequest.
  **/
-void libspdm_test_responder_respond_if_ready_case14(void **state) {
+static void rsp_respond_if_ready_case14(void **state) {
     libspdm_return_t status;
     libspdm_test_context_t    *spdm_test_context;
     libspdm_context_t  *spdm_context;
@@ -1366,39 +1373,39 @@ void libspdm_test_responder_respond_if_ready_case14(void **state) {
 }
 #endif /* LIBSPDM_ENABLE_CAPABILITY_CERT_CAP*/
 
-int libspdm_responder_respond_if_ready_test_main(void) {
-    const struct CMUnitTest spdm_responder_respond_if_ready_tests[] = {
+int libspdm_rsp_respond_if_ready_test(void) {
+    const struct CMUnitTest test_cases[] = {
         /* Success Case*/
     #if LIBSPDM_ENABLE_CAPABILITY_CERT_CAP
-        cmocka_unit_test(libspdm_test_responder_respond_if_ready_case1),
-        cmocka_unit_test(libspdm_test_responder_respond_if_ready_case2),
+        cmocka_unit_test(rsp_respond_if_ready_case1),
+        cmocka_unit_test(rsp_respond_if_ready_case2),
     #endif /* LIBSPDM_ENABLE_CAPABILITY_CERT_CAP*/
 
     #if LIBSPDM_ENABLE_CAPABILITY_CHAL_CAP
-        cmocka_unit_test(libspdm_test_responder_respond_if_ready_case3),
+        cmocka_unit_test(rsp_respond_if_ready_case3),
     #endif /* LIBSPDM_ENABLE_CAPABILITY_CHAL_CAP*/
 
     #if LIBSPDM_ENABLE_CAPABILITY_MEAS_CAP
-        cmocka_unit_test(libspdm_test_responder_respond_if_ready_case4),
+        cmocka_unit_test(rsp_respond_if_ready_case4),
     #endif /* LIBSPDM_ENABLE_CAPABILITY_MEAS_CAP*/
 
     #if LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP
-        cmocka_unit_test(libspdm_test_responder_respond_if_ready_case5),
-        cmocka_unit_test(libspdm_test_responder_respond_if_ready_case6),
+        cmocka_unit_test(rsp_respond_if_ready_case5),
+        cmocka_unit_test(rsp_respond_if_ready_case6),
     #endif /* LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP*/
 
     #if LIBSPDM_ENABLE_CAPABILITY_PSK_CAP
-        cmocka_unit_test(libspdm_test_responder_respond_if_ready_case7),
-        cmocka_unit_test(libspdm_test_responder_respond_if_ready_case8),
+        cmocka_unit_test(rsp_respond_if_ready_case7),
+        cmocka_unit_test(rsp_respond_if_ready_case8),
     #endif /* LIBSPDM_ENABLE_CAPABILITY_PSK_CAP*/
 
     #if LIBSPDM_ENABLE_CAPABILITY_CERT_CAP
-        cmocka_unit_test(libspdm_test_responder_respond_if_ready_case9),
-        cmocka_unit_test(libspdm_test_responder_respond_if_ready_case10),
-        cmocka_unit_test(libspdm_test_responder_respond_if_ready_case11),
-        cmocka_unit_test(libspdm_test_responder_respond_if_ready_case12),
-        cmocka_unit_test(libspdm_test_responder_respond_if_ready_case13),
-        cmocka_unit_test(libspdm_test_responder_respond_if_ready_case14),
+        cmocka_unit_test(rsp_respond_if_ready_case9),
+        cmocka_unit_test(rsp_respond_if_ready_case10),
+        cmocka_unit_test(rsp_respond_if_ready_case11),
+        cmocka_unit_test(rsp_respond_if_ready_case12),
+        cmocka_unit_test(rsp_respond_if_ready_case13),
+        cmocka_unit_test(rsp_respond_if_ready_case14),
     #endif /* LIBSPDM_ENABLE_CAPABILITY_CERT_CAP*/
 
     };
@@ -1410,7 +1417,7 @@ int libspdm_responder_respond_if_ready_test_main(void) {
 
     libspdm_setup_test_context (&test_context);
 
-    return cmocka_run_group_tests(spdm_responder_respond_if_ready_tests,
+    return cmocka_run_group_tests(test_cases,
                                   libspdm_unit_test_group_setup,
                                   libspdm_unit_test_group_teardown);
 }

@@ -17,9 +17,7 @@ size_t libspdm_get_max_buffer_size(void)
 
 libspdm_return_t libspdm_vendor_get_id_func_test(
     void *spdm_context,
-#if LIBSPDM_PASS_SESSION_ID
     const uint32_t *session_id,
-#endif
     uint16_t *resp_standard_id,
     uint8_t *resp_vendor_id_len,
     void *resp_vendor_id)
@@ -29,15 +27,13 @@ libspdm_return_t libspdm_vendor_get_id_func_test(
 
 libspdm_return_t libspdm_vendor_response_func_test(
     void *spdm_context,
-#if LIBSPDM_PASS_SESSION_ID
     const uint32_t *session_id,
-#endif
     uint16_t req_standard_id,
     uint8_t req_vendor_id_len,
     const void *req_vendor_id,
-    uint16_t req_size,
+    uint32_t req_size,
     const void *req_data,
-    uint16_t *resp_size,
+    uint32_t *resp_size,
     void *resp_data)
 {
     return LIBSPDM_STATUS_SUCCESS;
@@ -73,7 +69,8 @@ void libspdm_test_responder_vendor_cmds_case1(void **State)
     spdm_context->last_spdm_request_session_id_valid = true;
     spdm_context->last_spdm_request_session_id = session_id;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init(spdm_context, session_info, session_id, true);
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_secured_message_set_session_state(
         session_info->secured_message_context,
         LIBSPDM_SESSION_STATE_ESTABLISHED);

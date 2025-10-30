@@ -1,10 +1,12 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2024 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
 #include "internal/libspdm_requester_lib.h"
+
+#if (LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP) || (LIBSPDM_ENABLE_CAPABILITY_PSK_CAP)
 
 #pragma pack(1)
 typedef struct {
@@ -112,10 +114,6 @@ static libspdm_return_t libspdm_try_heartbeat(libspdm_context_t *spdm_context, u
         status = LIBSPDM_STATUS_INVALID_MSG_SIZE;
         goto receive_done;
     }
-    if (spdm_response->header.spdm_version != spdm_request->header.spdm_version) {
-        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
-        goto receive_done;
-    }
     if (spdm_response->header.request_response_code == SPDM_ERROR) {
         status = libspdm_handle_error_response_main(
             spdm_context, &session_id, &spdm_response_size,
@@ -124,6 +122,10 @@ static libspdm_return_t libspdm_try_heartbeat(libspdm_context_t *spdm_context, u
             goto receive_done;
         }
     } else if (spdm_response->header.request_response_code != SPDM_HEARTBEAT_ACK) {
+        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
+        goto receive_done;
+    }
+    if (spdm_response->header.spdm_version != spdm_request->header.spdm_version) {
         status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
         goto receive_done;
     }
@@ -168,3 +170,5 @@ libspdm_return_t libspdm_heartbeat(void *spdm_context, uint32_t session_id)
 
     return status;
 }
+
+#endif /* (LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP) || (LIBSPDM_ENABLE_CAPABILITY_PSK_CAP) */

@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2022 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -24,9 +24,7 @@ typedef struct {
 
 libspdm_return_t my_test_get_vendor_id_func(
     void *spdm_context,
-#if LIBSPDM_PASS_SESSION_ID
     const uint32_t *session_id,
-#endif
     uint16_t *resp_standard_id,
     uint8_t *resp_vendor_id_len,
     void *resp_vendor_id)
@@ -51,15 +49,13 @@ libspdm_return_t my_test_get_response_func(
 
 libspdm_return_t my_test_get_response_func2(
     void *spdm_context,
-#if LIBSPDM_PASS_SESSION_ID
     const uint32_t *session_id,
-#endif
     uint16_t req_standard_id,
     uint8_t req_vendor_id_len,
     const void *req_vendor_id,
-    uint16_t req_size,
+    uint32_t req_size,
     const void *req_data,
-    uint16_t *resp_size,
+    uint32_t *resp_size,
     void *resp_data)
 {
     /* response message size is greater than the sending transmit buffer size of responder */
@@ -282,6 +278,8 @@ void libspdm_test_responder_receive_send_rsp_case2(void** state)
     libspdm_release_sender_buffer(spdm_context);
 }
 
+
+#if LIBSPDM_ENABLE_VENDOR_DEFINED_MESSAGES
 /**
  * Test 3: Test Responder Receive Send flow triggers chunk get mode
  * if response message size is larger than responder sending transmit buffer size.
@@ -363,6 +361,7 @@ void libspdm_test_responder_receive_send_rsp_case3(void** state)
     assert_int_equal(spdm_context->chunk_context.get.chunk_in_use, true);
     libspdm_release_sender_buffer(spdm_context);
 }
+#endif /* LIBSPDM_ENABLE_VENDOR_DEFINED_MESSAGES */
 
 /**
  * Test 4: Test Responder Receive Send flow triggers chunk get mode
@@ -497,18 +496,20 @@ void libspdm_test_responder_receive_send_rsp_case4(void** state)
 #endif /* LIBSPDM_ENABLE_CAPABILITY_MEAS_CAP */
 }
 
-int libspdm_responder_receive_send_test_main(void)
+int libspdm_rsp_receive_send_test(void)
 {
-    const struct CMUnitTest spdm_responder_receive_send_tests[] = {
+    const struct CMUnitTest test_cases[] = {
         /* response message size is larger than requester data_transfer_size */
         cmocka_unit_test(libspdm_test_responder_receive_send_rsp_case1),
         /* response message size is larger than responder sending transmit buffer size */
         cmocka_unit_test_setup(libspdm_test_responder_receive_send_rsp_case2,
                                libspdm_unit_test_group_setup),
+        #if LIBSPDM_ENABLE_VENDOR_DEFINED_MESSAGES
         /* response message size is larger than responder sending transmit buffer size
          * using the new Vendor Defined Message API */
         cmocka_unit_test_setup(libspdm_test_responder_receive_send_rsp_case3,
                                libspdm_unit_test_group_setup),
+        #endif /* LIBSPDM_ENABLE_VENDOR_DEFINED_MESSAGES */
         /* response message size is larger than requester max_spdm_msg_size */
         cmocka_unit_test_setup(libspdm_test_responder_receive_send_rsp_case4,
                                libspdm_unit_test_group_setup),
@@ -521,7 +522,7 @@ int libspdm_responder_receive_send_test_main(void)
 
     libspdm_setup_test_context(&test_context);
 
-    return cmocka_run_group_tests(spdm_responder_receive_send_tests,
+    return cmocka_run_group_tests(test_cases,
                                   libspdm_unit_test_group_setup,
                                   libspdm_unit_test_group_teardown);
 }

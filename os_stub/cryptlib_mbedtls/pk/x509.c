@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2024 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -85,6 +85,29 @@ typedef struct {
 
 #define LIBSPDM_MAX_SUBJECT_BUFFER_SIZE MBEDTLS_X509_MAX_DN_NAME_SIZE
 
+#ifdef LIBSPDM_MBEDTLS_X509_ALLOW_UNSUPPORTED_CRITICAL_EXTENSION
+int wrapper_mbedtls_x509_crt_ext_cb(void *p_ctx,
+                                    mbedtls_x509_crt const *crt,
+                                    mbedtls_x509_buf const *oid,
+                                    int critical,
+                                    const unsigned char *p,
+                                    const unsigned char *end)
+{
+    return 0;
+}
+#endif
+
+int wrapper_mbedtls_x509_crt_parse_der(mbedtls_x509_crt *chain,
+                                       const unsigned char *buf,
+                                       size_t buflen)
+{
+#ifdef LIBSPDM_MBEDTLS_X509_ALLOW_UNSUPPORTED_CRITICAL_EXTENSION
+    return mbedtls_x509_crt_parse_der_with_ext_cb(chain, buf, buflen, 1, wrapper_mbedtls_x509_crt_ext_cb, NULL);
+#else
+    return mbedtls_x509_crt_parse_der(chain, buf, buflen);
+#endif
+}
+
 /**
  * Construct a X509 object from DER-encoded certificate data.
  *
@@ -117,7 +140,12 @@ bool libspdm_x509_construct_certificate(const uint8_t *cert, size_t cert_size,
     mbedtls_x509_crt_init(mbedtls_cert);
 
     *single_x509_cert = (uint8_t *)(void *)mbedtls_cert;
-    ret = mbedtls_x509_crt_parse_der(mbedtls_cert, cert, cert_size);
+    ret = wrapper_mbedtls_x509_crt_parse_der(mbedtls_cert, cert, cert_size);
+
+    if (ret != 0){
+        libspdm_x509_free(mbedtls_cert);
+        *single_x509_cert = NULL;
+    }
 
     return ret == 0;
 }
@@ -158,7 +186,7 @@ static bool libspdm_x509_construct_certificate_stack_v(uint8_t **x509_stack,
             break;
         }
 
-        ret = mbedtls_x509_crt_parse_der(crt, cert, cert_size);
+        ret = wrapper_mbedtls_x509_crt_parse_der(crt, cert, cert_size);
 
         if (ret != 0) {
             break;
@@ -287,7 +315,7 @@ bool libspdm_x509_get_subject_name(const uint8_t *cert, size_t cert_size,
 
     mbedtls_x509_crt_init(&crt);
 
-    ret = mbedtls_x509_crt_parse_der(&crt, cert, cert_size);
+    ret = wrapper_mbedtls_x509_crt_parse_der(&crt, cert, cert_size);
 
     if (ret == 0) {
         if (*subject_size < crt.subject_raw.len) {
@@ -355,7 +383,7 @@ libspdm_internal_x509_get_subject_nid_name(const uint8_t *cert, size_t cert_size
 
     mbedtls_x509_crt_init(&crt);
 
-    ret = mbedtls_x509_crt_parse_der(&crt, cert, cert_size);
+    ret = wrapper_mbedtls_x509_crt_parse_der(&crt, cert, cert_size);
 
     if (ret == 0) {
         name = &(crt.subject);
@@ -387,7 +415,7 @@ libspdm_internal_x509_get_issuer_nid_name(const uint8_t *cert, size_t cert_size,
 
     mbedtls_x509_crt_init(&crt);
 
-    ret = mbedtls_x509_crt_parse_der(&crt, cert, cert_size);
+    ret = wrapper_mbedtls_x509_crt_parse_der(&crt, cert, cert_size);
 
     if (ret == 0) {
         name = &(crt.issuer);
@@ -497,7 +525,7 @@ bool libspdm_rsa_get_public_key_from_x509(const uint8_t *cert, size_t cert_size,
 
     mbedtls_x509_crt_init(&crt);
 
-    if (mbedtls_x509_crt_parse_der(&crt, cert, cert_size) != 0) {
+    if (wrapper_mbedtls_x509_crt_parse_der(&crt, cert, cert_size) != 0) {
         return false;
     }
 
@@ -549,7 +577,7 @@ bool libspdm_ec_get_public_key_from_x509(const uint8_t *cert, size_t cert_size,
 
     mbedtls_x509_crt_init(&crt);
 
-    if (mbedtls_x509_crt_parse_der(&crt, cert, cert_size) != 0) {
+    if (wrapper_mbedtls_x509_crt_parse_der(&crt, cert, cert_size) != 0) {
         return false;
     }
 
@@ -658,10 +686,10 @@ bool libspdm_x509_verify_cert(const uint8_t *cert, size_t cert_size,
     mbedtls_x509_crt_init(&ca);
     mbedtls_x509_crt_init(&end);
 
-    ret = mbedtls_x509_crt_parse_der(&ca, ca_cert, ca_cert_size);
+    ret = wrapper_mbedtls_x509_crt_parse_der(&ca, ca_cert, ca_cert_size);
 
     if (ret == 0) {
-        ret = mbedtls_x509_crt_parse_der(&end, cert, cert_size);
+        ret = wrapper_mbedtls_x509_crt_parse_der(&end, cert, cert_size);
     }
 
     if (ret == 0) {
@@ -898,7 +926,7 @@ bool libspdm_x509_get_version(const uint8_t *cert, size_t cert_size,
 
     mbedtls_x509_crt_init(&crt);
 
-    ret = mbedtls_x509_crt_parse_der(&crt, cert, cert_size);
+    ret = wrapper_mbedtls_x509_crt_parse_der(&crt, cert, cert_size);
 
     if (ret == 0) {
         *version = crt.version - 1;
@@ -949,7 +977,7 @@ bool libspdm_x509_get_serial_number(const uint8_t *cert, size_t cert_size,
 
     mbedtls_x509_crt_init(&crt);
 
-    ret = mbedtls_x509_crt_parse_der(&crt, cert, cert_size);
+    ret = wrapper_mbedtls_x509_crt_parse_der(&crt, cert, cert_size);
 
     if (ret == 0) {
         if (*serial_number_size <= crt.serial.len) {
@@ -1009,7 +1037,7 @@ bool libspdm_x509_get_issuer_name(const uint8_t *cert, size_t cert_size,
 
     mbedtls_x509_crt_init(&crt);
 
-    ret = mbedtls_x509_crt_parse_der(&crt, cert, cert_size);
+    ret = wrapper_mbedtls_x509_crt_parse_der(&crt, cert, cert_size);
 
     if (ret == 0) {
         if (*issuer_size < crt.issuer_raw.len) {
@@ -1105,7 +1133,6 @@ libspdm_x509_get_issuer_orgnization_name(const uint8_t *cert, size_t cert_size,
         sizeof(m_libspdm_oid_organization_name), name_buffer, name_buffer_size);
 }
 
-#if LIBSPDM_ADDITIONAL_CHECK_CERT
 /**
  * Retrieve the signature algorithm from one X.509 certificate.
  *
@@ -1139,7 +1166,7 @@ bool libspdm_x509_get_signature_algorithm(const uint8_t *cert,
 
     mbedtls_x509_crt_init(&crt);
 
-    ret = mbedtls_x509_crt_parse_der(&crt, cert, cert_size);
+    ret = wrapper_mbedtls_x509_crt_parse_der(&crt, cert, cert_size);
 
     if (ret == 0) {
         if (*oid_size < crt.sig_oid.len) {
@@ -1161,7 +1188,6 @@ cleanup:
 
     return status;
 }
-#endif /* LIBSPDM_ADDITIONAL_CHECK_CERT */
 
 /**
  * Find first Extension data match with given OID
@@ -1288,7 +1314,7 @@ bool libspdm_x509_get_extension_data(const uint8_t *cert, size_t cert_size,
 
     mbedtls_x509_crt_init(&crt);
 
-    ret = mbedtls_x509_crt_parse_der(&crt, cert, cert_size);
+    ret = wrapper_mbedtls_x509_crt_parse_der(&crt, cert, cert_size);
 
     if (ret == 0) {
         ptr = crt.v3_ext.p;
@@ -1377,7 +1403,7 @@ bool libspdm_x509_get_validity(const uint8_t *cert, size_t cert_size,
     mbedtls_x509_crt_init(&crt);
     libspdm_zero_mem(&zero_time, sizeof(mbedtls_x509_time));
 
-    ret = mbedtls_x509_crt_parse_der(&crt, cert, cert_size);
+    ret = wrapper_mbedtls_x509_crt_parse_der(&crt, cert, cert_size);
 
     if (ret == 0) {
         f_size = sizeof(mbedtls_x509_time);
@@ -1450,7 +1476,7 @@ bool libspdm_x509_get_key_usage(const uint8_t *cert, size_t cert_size,
 
     mbedtls_x509_crt_init(&crt);
 
-    ret = mbedtls_x509_crt_parse_der(&crt, cert, cert_size);
+    ret = wrapper_mbedtls_x509_crt_parse_der(&crt, cert, cert_size);
 
     if (ret == 0) {
         *usage = crt.MBEDTLS_PRIVATE(key_usage);
@@ -2028,6 +2054,7 @@ bool libspdm_gen_x509_csr(size_t hash_nid, size_t asym_nid,
     mbedtls_x509write_csr_init(&req);
     mbedtls_pk_init(&key);
     csr_buffer_size = *csr_len;
+    libspdm_zero_mem(&extns, sizeof(mbedtls_asn1_sequence));
     next_oid = NULL;
 
     ret = 1;
@@ -2215,9 +2242,26 @@ bool libspdm_gen_x509_csr(size_t hash_nid, size_t asym_nid,
     ret = 0;
 free_all:
     mbedtls_x509write_csr_free(&req);
+    mbedtls_asn1_sequence_free(extns.next);
     mbedtls_pk_free(&key);
 
     return(ret == 0);
+}
+
+bool libspdm_gen_x509_csr_with_pqc(
+    size_t hash_nid, size_t asym_nid, size_t pqc_asym_nid,
+    uint8_t *requester_info, size_t requester_info_length,
+    bool is_ca,
+    void *context, char *subject_name,
+    size_t *csr_len, uint8_t *csr_pointer,
+    void *base_cert)
+{
+    if (pqc_asym_nid != 0) {
+        return false;
+    }
+    return libspdm_gen_x509_csr(hash_nid, asym_nid, requester_info,
+                                requester_info_length, is_ca, context,
+                                subject_name, csr_len, csr_pointer, base_cert);
 }
 
 #endif

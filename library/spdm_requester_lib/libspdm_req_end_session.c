@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2024 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -22,9 +22,6 @@ typedef struct {
  * @param  spdm_context                  A pointer to the SPDM context.
  * @param  session_id                    session_id to the END_SESSION request.
  * @param  end_session_attributes         end_session_attributes to the END_SESSION_ACK request.
- *
- * @retval RETURN_SUCCESS               The END_SESSION is sent and the END_SESSION_ACK is received.
- * @retval RETURN_DEVICE_ERROR          A device error occurs when communicates with the device.
  **/
 static libspdm_return_t libspdm_try_send_receive_end_session(libspdm_context_t *spdm_context,
                                                              uint32_t session_id,
@@ -114,10 +111,6 @@ static libspdm_return_t libspdm_try_send_receive_end_session(libspdm_context_t *
         status = LIBSPDM_STATUS_INVALID_MSG_SIZE;
         goto receive_done;
     }
-    if (spdm_response->header.spdm_version != spdm_request->header.spdm_version) {
-        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
-        goto receive_done;
-    }
     if (spdm_response->header.request_response_code == SPDM_ERROR) {
         status = libspdm_handle_error_response_main(
             spdm_context, &session_id, &spdm_response_size,
@@ -126,6 +119,10 @@ static libspdm_return_t libspdm_try_send_receive_end_session(libspdm_context_t *
             goto receive_done;
         }
     } else if (spdm_response->header.request_response_code != SPDM_END_SESSION_ACK) {
+        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
+        goto receive_done;
+    }
+    if (spdm_response->header.spdm_version != spdm_request->header.spdm_version) {
         status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
         goto receive_done;
     }

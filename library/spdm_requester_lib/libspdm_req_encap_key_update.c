@@ -7,7 +7,8 @@
 #include "internal/libspdm_requester_lib.h"
 #include "internal/libspdm_secured_message_lib.h"
 
-#if LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP
+#if (LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP) && \
+    ((LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP) || (LIBSPDM_ENABLE_CAPABILITY_PSK_CAP))
 
 libspdm_return_t libspdm_get_encap_response_key_update(void *spdm_context,
                                                        size_t request_size,
@@ -93,9 +94,9 @@ libspdm_return_t libspdm_get_encap_response_key_update(void *spdm_context,
     result = true;
     switch (spdm_request->header.param1) {
     case SPDM_KEY_UPDATE_OPERATIONS_TABLE_UPDATE_KEY:
-        if(!libspdm_consttime_is_mem_equal(prev_spdm_request,
-                                           &spdm_key_init_update_operation,
-                                           sizeof(spdm_key_update_request_t))) {
+        if (!libspdm_consttime_is_mem_equal(prev_spdm_request,
+                                            &spdm_key_init_update_operation,
+                                            sizeof(spdm_key_update_request_t))) {
             result = false;
             break;
         }
@@ -114,8 +115,7 @@ libspdm_return_t libspdm_get_encap_response_key_update(void *spdm_context,
         result = false;
         break;
     case SPDM_KEY_UPDATE_OPERATIONS_TABLE_VERIFY_NEW_KEY:
-        if(prev_spdm_request->header.param1 !=
-           SPDM_KEY_UPDATE_OPERATIONS_TABLE_UPDATE_KEY) {
+        if (prev_spdm_request->header.param1 != SPDM_KEY_UPDATE_OPERATIONS_TABLE_UPDATE_KEY) {
             result = false;
             break;
         }
@@ -156,4 +156,4 @@ libspdm_return_t libspdm_get_encap_response_key_update(void *spdm_context,
     return LIBSPDM_STATUS_SUCCESS;
 }
 
-#endif /* LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP*/
+#endif /* LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP && (...) */

@@ -85,16 +85,6 @@ Enumeration value used for the `libspdm_set_data` and/or `libspdm_get_data` func
     - `LIBSPDM_DATA_LOCATION_LOCAL`
         - The SPDM version(s) of the local endpoint.
         - Can contain multiple entries.
-- `LIBSPDM_DATA_SECURED_MESSAGE_VERSION`
-    - The SPDM secured message (DSP0277) version(s) (1.0 or 1.1) of an endpoint. These are are
-      communicated through the `KEY_EXCHANGE / KEY_EXCHANGE_RSP` or `PSK_EXCHANGE / PSK_EXCHANGE`
-      messages.
-    - `LIBSPDM_DATA_LOCATION_CONNECTION`
-        - The SPDM secured message version of the peer endpoint.
-        - Cannot contain multiple entries.
-    - `LIBSPDM_DATA_LOCATION_LOCAL`
-        - The SPDM secured message version(s) of the local endpoint.
-        - Can contain multiple entries.
 - `LIBSPDM_DATA_CAPABILITY_FLAGS`
     - The SPDM capabilities of an endpoint. These are communicated through the `GET_CAPABILITIES /
       CAPABILITIES` messages. This is a bitmask whose fields are defined through the
@@ -198,7 +188,8 @@ Enumeration value used for the `libspdm_set_data` and/or `libspdm_get_data` func
               standards body.
         - `SPDM_ALGORITHMS_OPAQUE_DATA_FORMAT_1`
             - The format for all `OpaqueData` fields is defined by the SPDM specification's general
-              opaque data format.
+              opaque data format. For libspdm this format is required during key exchange to
+              negotiate the version of the secured message binding specification.
         - `SPDM_ALGORITHMS_MULTI_KEY_CONN`
             - Specifies whether the Integrator wants the peer endpoint to support multi-key or not.
               This only applies when the value of the peer endpoint's `MULTI_KEY_CAP` is
@@ -359,8 +350,6 @@ Enumeration value used for the `libspdm_set_data` and/or `libspdm_get_data` func
         - If `false` then Responder does not support multi-key capabilities and only supports a
           single asymmetric key during the connection.
     - Only `LIBSPDM_DATA_LOCATION_CONNECTION` is allowed.
-- `LIBSPDM_DATA_TOTAL_KEY_PAIRS`
-    - the total number of key pairs on the responder.
 
 ### Values that can only be `get`.
 
@@ -372,6 +361,8 @@ Enumeration value used for the `libspdm_set_data` and/or `libspdm_get_data` func
 - `LIBSPDM_DATA_PEER_TOTAL_DIGEST_BUFFER`
     - Returns a pointer to the stored hashes of certificate chains in the `spdm_context` from the
       most recent `DIGESTS` response. It also returns the size, in bytes, of the buffer.
+- `LIBSPDM_DATA_SESSION_SECURED_MESSAGE_VERSION`
+    - For a given session ID, returns the negotiated secured message version.
 - `LIBSPDM_DATA_SESSION_USE_PSK`
     - For a given session ID, returns whether the session was established via symmetric key
       exchange (true) or asymmetric key exchange (false).
@@ -412,3 +403,15 @@ Enumeration value used for the `libspdm_set_data` and/or `libspdm_get_data` func
     - This pointer is valid after libspdm_set_scratch_buffer is called, but the command itself is
       not valid unless the size returned is greater than zero. The command and its size will
       persist until the next command is received or the libspdm context is reset.
+
+### Values that can only be `set`.
+
+- `LIBSPDM_DATA_SECURED_MESSAGE_VERSION`
+    - The SPDM secured message (DSP0277) version(s) (1.0/1.1/1.2) of the local endpoint. These are
+      communicated through the opaque data fields in `KEY_EXCHANGE / KEY_EXCHANGE_RSP` or
+      `PSK_EXCHANGE / PSK_EXCHANGE` messages.
+    - Once a secure session has been established then `LIBSPDM_DATA_SESSION_SECURED_MESSAGE_VERSION`
+      can be used to retrieve the negotiated secured message version.
+    - `LIBSPDM_DATA_LOCATION_LOCAL`
+        - The SPDM secured message version(s) of the local endpoint.
+        - Can contain multiple entries.

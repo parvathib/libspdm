@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2022 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -28,24 +28,29 @@
  * because unit test uses it own way to track transcript. */
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT == 0
 
-#define LIBSPDM_MAX_MESSAGE_B_BUFFER_SIZE (24 + \
-                                           LIBSPDM_MAX_HASH_SIZE * SPDM_MAX_SLOT_COUNT + \
+#define LIBSPDM_MAX_MESSAGE_B_BUFFER_SIZE (40 + \
+                                           (LIBSPDM_MAX_HASH_SIZE + 4) * SPDM_MAX_SLOT_COUNT + \
                                            LIBSPDM_MAX_CERT_CHAIN_SIZE)
 
-#define LIBSPDM_MAX_MESSAGE_C_BUFFER_SIZE (78 + \
+#define LIBSPDM_MAX_MESSAGE_C_BUFFER_SIZE (90 + \
                                            LIBSPDM_MAX_HASH_SIZE * 2 + \
-                                           LIBSPDM_MAX_ASYM_KEY_SIZE + SPDM_MAX_OPAQUE_DATA_SIZE)
+                                           LIBSPDM_RSP_SIGNATURE_DATA_MAX_SIZE + \
+                                           SPDM_MAX_OPAQUE_DATA_SIZE)
 
-#define LIBSPDM_MAX_MESSAGE_M_BUFFER_SIZE (47 + SPDM_NONCE_SIZE + \
+#define LIBSPDM_MAX_MESSAGE_M_BUFFER_SIZE (63 + SPDM_NONCE_SIZE + \
                                            LIBSPDM_MAX_MEASUREMENT_RECORD_SIZE + \
-                                           LIBSPDM_MAX_ASYM_KEY_SIZE + SPDM_MAX_OPAQUE_DATA_SIZE)
+                                           LIBSPDM_RSP_SIGNATURE_DATA_MAX_SIZE + \
+                                           SPDM_MAX_OPAQUE_DATA_SIZE)
 
-#define LIBSPDM_MAX_MESSAGE_K_BUFFER_SIZE (84 + LIBSPDM_MAX_DHE_KEY_SIZE * 2 + \
-                                           LIBSPDM_MAX_HASH_SIZE * 2 + LIBSPDM_MAX_ASYM_KEY_SIZE + \
+#define LIBSPDM_MAX_MESSAGE_K_BUFFER_SIZE (84 + LIBSPDM_REQ_EXCHANGE_DATA_MAX_SIZE + \
+                                           LIBSPDM_RSP_EXCHANGE_DATA_MAX_SIZE + \
+                                           LIBSPDM_MAX_HASH_SIZE * 2 + \
+                                           LIBSPDM_RSP_SIGNATURE_DATA_MAX_SIZE + \
                                            SPDM_MAX_OPAQUE_DATA_SIZE * 2)
 
-#define LIBSPDM_MAX_MESSAGE_F_BUFFER_SIZE (8 + LIBSPDM_MAX_HASH_SIZE * 2 + \
-                                           LIBSPDM_MAX_ASYM_KEY_SIZE)
+#define LIBSPDM_MAX_MESSAGE_F_BUFFER_SIZE (12 + LIBSPDM_MAX_HASH_SIZE * 2 + \
+                                           LIBSPDM_REQ_SIGNATURE_DATA_MAX_SIZE + \
+                                           SPDM_MAX_OPAQUE_DATA_SIZE * 2)
 
 #define LIBSPDM_MAX_MESSAGE_L1L2_BUFFER_SIZE \
     (LIBSPDM_MAX_MESSAGE_VCA_BUFFER_SIZE + LIBSPDM_MAX_MESSAGE_M_BUFFER_SIZE)
@@ -56,8 +61,10 @@
 
 #define LIBSPDM_MAX_MESSAGE_TH_BUFFER_SIZE \
     (LIBSPDM_MAX_MESSAGE_VCA_BUFFER_SIZE + \
-     LIBSPDM_MAX_CERT_CHAIN_SIZE + LIBSPDM_MAX_MESSAGE_K_BUFFER_SIZE + \
-     LIBSPDM_MAX_CERT_CHAIN_SIZE + LIBSPDM_MAX_MESSAGE_F_BUFFER_SIZE)
+     LIBSPDM_MAX_MESSAGE_D_BUFFER_SIZE + \
+     LIBSPDM_MAX_HASH_SIZE + LIBSPDM_MAX_MESSAGE_K_BUFFER_SIZE + \
+     LIBSPDM_MAX_MESSAGE_D_BUFFER_SIZE + \
+     LIBSPDM_MAX_HASH_SIZE + LIBSPDM_MAX_MESSAGE_F_BUFFER_SIZE)
 
 typedef struct {
     size_t max_buffer_size;
@@ -105,7 +112,9 @@ extern uint8_t m_libspdm_use_measurement_spec;
 extern uint32_t m_libspdm_use_measurement_hash_algo;
 extern uint32_t m_libspdm_use_hash_algo;
 extern uint32_t m_libspdm_use_asym_algo;
+extern uint32_t m_libspdm_use_pqc_asym_algo;
 extern uint16_t m_libspdm_use_req_asym_algo;
+extern uint32_t m_libspdm_use_req_pqc_asym_algo;
 extern uint16_t m_libspdm_use_dhe_algo;
 extern uint16_t m_libspdm_use_aead_algo;
 extern uint16_t m_libspdm_use_key_schedule_algo;

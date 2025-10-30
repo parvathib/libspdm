@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2024 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -9,7 +9,7 @@
 #include "spdm_unit_fuzzing.h"
 #include "toolchain_harness.h"
 
-#if LIBSPDM_ENABLE_CAPABILITY_CHAL_CAP
+#if LIBSPDM_SEND_CHALLENGE_SUPPORT
 
 static size_t m_libspdm_local_buffer_size;
 static uint8_t m_libspdm_local_buffer[LIBSPDM_MAX_MESSAGE_M1M2_BUFFER_SIZE];
@@ -102,11 +102,9 @@ libspdm_return_t libspdm_device_receive_message(void *spdm_context, size_t *resp
         spdm_response->header.spdm_version = SPDM_MESSAGE_VERSION_12;
     }
     libspdm_responder_data_sign(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
         spdm_context,
-#endif
         spdm_response->header.spdm_version << SPDM_VERSION_NUMBER_SHIFT_BIT,
-            SPDM_CHALLENGE_AUTH, m_libspdm_use_asym_algo,
+            0, SPDM_CHALLENGE_AUTH, m_libspdm_use_asym_algo, m_libspdm_use_pqc_asym_algo,
             m_libspdm_use_hash_algo, false,
             m_libspdm_local_buffer, m_libspdm_local_buffer_size, ptr,
             &sig_size);
@@ -277,4 +275,4 @@ size_t libspdm_get_max_buffer_size(void)
 void libspdm_run_test_harness(void *test_buffer, size_t test_buffer_size){
 
 }
-#endif /* LIBSPDM_ENABLE_CAPABILITY_CHAL_CAP*/
+#endif /* LIBSPDM_SEND_CHALLENGE_SUPPORT */

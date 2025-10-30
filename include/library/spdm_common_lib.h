@@ -16,8 +16,8 @@ extern "C" {
 #include "library/spdm_secured_message_lib.h"
 #include "library/spdm_return_status.h"
 
-#define LIBSPDM_MAJOR_VERSION 0x03
-#define LIBSPDM_MINOR_VERSION 0x08
+#define LIBSPDM_MAJOR_VERSION 0x04
+#define LIBSPDM_MINOR_VERSION 0x00
 #define LIBSPDM_PATCH_VERSION 0x00
 #define LIBSPDM_ALPHA         0xFF
 
@@ -39,6 +39,7 @@ typedef enum {
 
     /* SPDM capability */
     LIBSPDM_DATA_CAPABILITY_FLAGS,
+    LIBSPDM_DATA_CAPABILITY_EXT_FLAGS,
     LIBSPDM_DATA_CAPABILITY_CT_EXPONENT,
     LIBSPDM_DATA_CAPABILITY_RTT_US,
     LIBSPDM_DATA_CAPABILITY_DATA_TRANSFER_SIZE,
@@ -56,6 +57,9 @@ typedef enum {
     LIBSPDM_DATA_KEY_SCHEDULE,
     LIBSPDM_DATA_OTHER_PARAMS_SUPPORT,
     LIBSPDM_DATA_MEL_SPEC,
+    LIBSPDM_DATA_PQC_ASYM_ALGO,
+    LIBSPDM_DATA_REQ_PQC_ASYM_ALG,
+    LIBSPDM_DATA_KEM_ALG,
 
     /* Connection State */
     LIBSPDM_DATA_CONNECTION_STATE,
@@ -75,6 +79,7 @@ typedef enum {
 
     LIBSPDM_DATA_BASIC_MUT_AUTH_REQUESTED,
     LIBSPDM_DATA_MUT_AUTH_REQUESTED,
+    LIBSPDM_DATA_MANDATORY_MUT_AUTH,
     LIBSPDM_DATA_HEARTBEAT_PERIOD,
 
     /* Negotiated result */
@@ -87,7 +92,8 @@ typedef enum {
     LIBSPDM_DATA_PEER_CERT_INFO,
     LIBSPDM_DATA_PEER_KEY_USAGE_BIT_MASK,
 
-    /* SessionData */
+    /* Session-specific information. */
+    LIBSPDM_DATA_SESSION_SECURED_MESSAGE_VERSION,
     LIBSPDM_DATA_SESSION_USE_PSK,
     LIBSPDM_DATA_SESSION_MUT_AUTH_REQUESTED,
     LIBSPDM_DATA_SESSION_END_SESSION_ATTRIBUTES,
@@ -157,7 +163,9 @@ typedef enum {
     LIBSPDM_DATA_MULTI_KEY_CONN_REQ,
     LIBSPDM_DATA_MULTI_KEY_CONN_RSP,
 
-    LIBSPDM_DATA_TOTAL_KEY_PAIRS,
+    /* Control responder to use PQC first or traditional first,
+     * if both PQC and traditional are supported by both requester and responder. */
+    LIBSPDM_DATA_ALGO_PRIORITY_PQC_FIRST,
 
     /* MAX */
     LIBSPDM_DATA_MAX
@@ -172,6 +180,8 @@ typedef enum {
 
 #define LIBSPDM_MSG_LOG_STATUS_BUFFER_FULL 1
 #define LIBSPDM_MSG_LOG_MODE_ENABLE 1
+
+#define LIBSPDM_INVALID_SESSION_ID 0
 
 typedef enum {
     LIBSPDM_DATA_LOCATION_LOCAL,
@@ -275,16 +285,10 @@ typedef enum {
  * @param  parameter     Type specific parameter of the SPDM context data.
  * @param  data          A pointer to the SPDM context data.
  * @param  data_size     Size in bytes of the SPDM context data.
- *
- * @retval RETURN_SUCCESS               The SPDM context data is set successfully.
- * @retval RETURN_INVALID_PARAMETER     The data is NULL or the data_type is zero.
- * @retval RETURN_UNSUPPORTED           The data_type is unsupported.
- * @retval RETURN_ACCESS_DENIED         The data_type cannot be set.
- * @retval RETURN_NOT_READY             data is not ready to set.
  **/
 libspdm_return_t libspdm_set_data(void *spdm_context,
                                   libspdm_data_type_t data_type,
-                                  const libspdm_data_parameter_t *parameter, void *data,
+                                  const libspdm_data_parameter_t *parameter, const void *data,
                                   size_t data_size);
 
 /**
@@ -296,15 +300,9 @@ libspdm_return_t libspdm_set_data(void *spdm_context,
  * @param  data          A pointer to the SPDM context data.
  * @param  data_size     Size in bytes of the SPDM context data.
  *                       On input, it means the size in bytes of data buffer.
- *                       On output, it means the size in bytes of copied data buffer if RETURN_SUCCESS,
- *                       and means the size in bytes of desired data buffer if RETURN_BUFFER_TOO_SMALL.
- *
- * @retval RETURN_SUCCESS               The SPDM context data is set successfully.
- * @retval RETURN_INVALID_PARAMETER     The data_size is NULL or the data is NULL and *data_size is not zero.
- * @retval RETURN_UNSUPPORTED           The data_type is unsupported.
- * @retval RETURN_NOT_FOUND             The data_type cannot be found.
- * @retval RETURN_NOT_READY             The data is not ready to return.
- * @retval RETURN_BUFFER_TOO_SMALL      The buffer is too small to hold the data.
+ *                       On output, it means the size in bytes of copied data buffer if
+ *                       LIBSPDM_STATUS_SUCCESS, and means the size in bytes of desired data buffer
+ *                       if LIBSPDM_STATUS_BUFFER_TOO_SMALL.
  **/
 libspdm_return_t libspdm_get_data(void *spdm_context,
                                   libspdm_data_type_t data_type,
@@ -361,9 +359,6 @@ void libspdm_set_last_spdm_error_struct(void *spdm_context,
  * @param  num_secured_contexts  Number of secured message contexts to initialize.
  *                               Currently, only LIBSPDM_MAX_SESSION_COUNT is supported.
  *                               In future releases, lesser values may be supported.
- *
- * @retval RETURN_SUCCESS        Contexts are initialized.
- * @retval RETURN_DEVICE_ERROR   Context initialization failed.
  */
 libspdm_return_t libspdm_init_context_with_secured_context(void *spdm_context,
                                                            void **secured_contexts,
@@ -373,14 +368,14 @@ libspdm_return_t libspdm_init_context_with_secured_context(void *spdm_context,
 /**
  * Initialize an libspdm_fips_selftest_context.
  *
- * The
- *
  * @param  spdm_context         A pointer to the SPDM context.
- *
- * @retval RETURN_SUCCESS       context is initialized.
- * @retval RETURN_DEVICE_ERROR  context initialization failed.
+ * @param  buffer_size          The buffer size to hold large intermediate results.
+ * @param  buffer               The buffer provided by integrator to
+ *                              hold large intermediate results.
  */
-libspdm_return_t libspdm_init_fips_selftest_context(void *fips_selftest_context);
+libspdm_return_t libspdm_init_fips_selftest_context(void *fips_selftest_context,
+                                                    size_t buffer_size,
+                                                    void *buffer);
 
 /**
  * Return the size in bytes of the fips_selftest_context.
@@ -388,6 +383,13 @@ libspdm_return_t libspdm_init_fips_selftest_context(void *fips_selftest_context)
  * @return the size in bytes of the fips_selftest_context.
  **/
 size_t libspdm_get_fips_selftest_context_size(void);
+
+/**
+ * Returns the required buffer size for FIPS self-tests.
+ *
+ * @retval  The required buffer size in bytes.
+ */
+size_t libspdm_get_fips_selftest_buffer_size(void);
 
 /**
  * import fips_selftest_context to spdm_context;
@@ -427,9 +429,6 @@ bool libspdm_export_fips_selftest_context_from_spdm_context(void *spdm_context,
  * contexts can be returned by libspdm_get_context_size().
  *
  * @param  spdm_context         A pointer to the SPDM context.
- *
- * @retval RETURN_SUCCESS       context is initialized.
- * @retval RETURN_DEVICE_ERROR  context initialization failed.
  */
 libspdm_return_t libspdm_init_context(void *spdm_context);
 
@@ -561,8 +560,6 @@ typedef libspdm_return_t (*libspdm_device_acquire_sender_buffer_func)(
  *
  * @param  context                       A pointer to the SPDM context.
  * @param  msg_buf_ptr                   A pointer to a sender buffer.
- *
- * @retval RETURN_SUCCESS               The sender buffer is Released.
  **/
 typedef void (*libspdm_device_release_sender_buffer_func)(void *spdm_context,
                                                           const void *msg_buf_ptr);
@@ -584,8 +581,6 @@ typedef libspdm_return_t (*libspdm_device_acquire_receiver_buffer_func)(
  *
  * @param  context      A pointer to the SPDM context.
  * @param  msg_buf_ptr  A pointer to a receiver buffer.
- *
- * @retval RETURN_SUCCESS  The receiver buffer is Released.
  **/
 typedef void (*libspdm_device_release_receiver_buffer_func)(void *spdm_context,
                                                             const void *msg_buf_ptr);
@@ -667,9 +662,6 @@ void libspdm_register_device_buffer_func(
  * @param  transport_message       A pointer to a destination buffer to store the transport message.
  *                                 On input, it shall be msg_buf_ptr from sender buffer.
  *                                 On output, it will point to acquired sender buffer.
- *
- * @retval RETURN_SUCCESS               The message is encoded successfully.
- * @retval RETURN_INVALID_PARAMETER     The message is NULL or the message_size is zero.
  **/
 typedef libspdm_return_t (*libspdm_transport_encode_message_func)(
     void *spdm_context, const uint32_t *session_id, bool is_app_message,
@@ -702,10 +694,6 @@ typedef libspdm_return_t (*libspdm_transport_encode_message_func)(
  *                                 On input, it shall point to the scratch buffer in spdm_context.
  *                                 On output, for normal message, it will point to the original receiver buffer.
  *                                 On output, for secured message, it will point to the scratch buffer in spdm_context.
- *
- * @retval RETURN_SUCCESS               The message is decoded successfully.
- * @retval RETURN_INVALID_PARAMETER     The message is NULL or the message_size is zero.
- * @retval RETURN_UNSUPPORTED           The transport_message is unsupported.
  **/
 typedef libspdm_return_t (*libspdm_transport_decode_message_func)(
     void *spdm_context, uint32_t **session_id,
@@ -805,9 +793,6 @@ void libspdm_get_scratch_buffer (
  *                            returned from GET_CERTIFICATE. It starts with spdm_cert_chain_t.
  * @param  trust_anchor       A buffer to hold the trust_anchor which is used to validate the peer certificate, if not NULL.
  * @param  trust_anchor_size  A buffer to hold the trust_anchor_size, if not NULL.
- *
- * @retval RETURN_SUCCESS                The cert chain verification pass.
- * @retval RETURN_SECURITY_VIOLATION      The cert chain verification fail.
  **/
 typedef bool (*libspdm_verify_spdm_cert_chain_func)(
     void *spdm_context, uint8_t slot_id,
@@ -973,9 +958,7 @@ bool libspdm_get_fips_mode(void);
  **/
 typedef libspdm_return_t (*libspdm_vendor_get_id_callback_func)(
     void *spdm_context,
-#if LIBSPDM_PASS_SESSION_ID
     const uint32_t *session_id,
-#endif
     uint16_t *resp_standard_id,
     uint8_t *resp_vendor_id_len,
     void *resp_vendor_id);
@@ -996,15 +979,13 @@ typedef libspdm_return_t (*libspdm_vendor_get_id_callback_func)(
  **/
 typedef libspdm_return_t (*libspdm_vendor_response_callback_func)(
     void *spdm_context,
-#if LIBSPDM_PASS_SESSION_ID
     const uint32_t *session_id,
-#endif
     uint16_t req_standard_id,
     uint8_t req_vendor_id_len,
     const void *req_vendor_id,
-    uint16_t req_size,
+    uint32_t req_size,
     const void *req_data,
-    uint16_t *resp_size,
+    uint32_t *resp_size,
     void *resp_data);
 
 #endif /* LIBSPDM_ENABLE_VENDOR_DEFINED_MESSAGES */
@@ -1035,10 +1016,10 @@ typedef libspdm_return_t (*libspdm_process_event_func)(void *spdm_context,
                                                        uint32_t event_instance_id,
                                                        uint8_t svh_id,
                                                        uint8_t svh_vendor_id_len,
-                                                       void *svh_vendor_id,
+                                                       const void *svh_vendor_id,
                                                        uint16_t event_type_id,
                                                        uint16_t event_detail_len,
-                                                       void *event_detail);
+                                                       const void *event_detail);
 
 /**
  * Register callback to process SPDM events.
@@ -1050,6 +1031,27 @@ typedef libspdm_return_t (*libspdm_process_event_func)(void *spdm_context,
 void libspdm_register_event_callback(void *spdm_context,
                                      libspdm_process_event_func process_event_func);
 #endif /* LIBSPDM_EVENT_RECIPIENT_SUPPORT */
+
+#if (LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP) && (LIBSPDM_SEND_GET_ENDPOINT_INFO_SUPPORT)
+/**
+ * Encapsulate Get Endpoint Info Callback Function Pointer.
+ *
+ * @param spdm_context       A pointer to the SPDM context.
+ * @param subcode            The subcode of the GET_ENDPOINT_INFO request.
+ * @param param2             Bit [7:4]. Reserved.
+ *                           Bit [3:0]. SlotID.
+ * @param request_attributes The request attributes of the GET_ENDPOINT_INFO request.
+ * @param endpoint_info_size The size in bytes of the endpoint_info buffer.
+ * @param endpoint_info      A pointer to the buffer to store the endpoint information.
+ */
+typedef libspdm_return_t (*libspdm_get_endpoint_info_callback_func)(
+    void *spdm_context,
+    uint8_t subcode,
+    uint8_t param2,
+    uint8_t request_attributes,
+    uint32_t endpoint_info_size,
+    const void *endpoint_info);
+#endif /* LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP && LIBSPDM_SEND_GET_ENDPOINT_INFO_SUPPORT */
 
 #ifdef __cplusplus
 }

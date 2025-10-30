@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2024 DMTF. All rights reserved.
+ *  Copyright 2024-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -45,7 +45,7 @@ size_t m_libspdm_get_measurement_extension_log_request4_size =
  * Test 1: request the first LIBSPDM_MAX_MEL_BLOCK_LEN bytes of the MEL
  * Expected Behavior: generate a correctly formed MEL message, including its portion_length and remainder_length fields
  **/
-void libspdm_test_responder_measurement_extension_log_case1(void **state)
+static void rsp_measurement_extension_log_case1(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -107,7 +107,7 @@ void libspdm_test_responder_measurement_extension_log_case1(void **state)
  * Test 2: request.length is less than the MEL len
  * Expected Behavior: generate a correctly formed MEL message, including its portion_length and remainder_length fields
  **/
-void libspdm_test_responder_measurement_extension_log_case2(void **state)
+static void rsp_measurement_extension_log_case2(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -172,7 +172,7 @@ void libspdm_test_responder_measurement_extension_log_case2(void **state)
  * Test 3: When the request.length is greater than LIBSPDM_MAX_MEL_BLOCK_LEN.
  * Expected Behavior: generate a correctly formed MEL message, including its portion_length and remainder_length fields
  **/
-void libspdm_test_responder_measurement_extension_log_case3(void **state)
+static void rsp_measurement_extension_log_case3(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -234,7 +234,7 @@ void libspdm_test_responder_measurement_extension_log_case3(void **state)
  * Test 4: request.offset > spdm mel len , wrong request message
  * Expected Behavior: Generate error response message
  **/
-void libspdm_test_responder_measurement_extension_log_case4(void **state)
+static void rsp_measurement_extension_log_case4(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -293,7 +293,7 @@ void libspdm_test_responder_measurement_extension_log_case4(void **state)
  * Test 5: A correct and not zero request.offset.
  * Expected Behavior: generate a correctly formed MEL message, including its portion_length and remainder_length fields
  **/
-void libspdm_test_responder_measurement_extension_log_case5(void **state)
+static void rsp_measurement_extension_log_case5(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -355,19 +355,19 @@ void libspdm_test_responder_measurement_extension_log_case5(void **state)
                         response_size - sizeof(spdm_measurement_extension_log_response_t));
 }
 
-int libspdm_responder_measurement_extension_log_test_main(void)
+int libspdm_rsp_measurement_extension_log_test(void)
 {
-    const struct CMUnitTest spdm_responder_measurement_extension_log_tests[] = {
+    const struct CMUnitTest test_cases[] = {
         /* Success Case*/
-        cmocka_unit_test(libspdm_test_responder_measurement_extension_log_case1),
+        cmocka_unit_test(rsp_measurement_extension_log_case1),
         /* Success Case, request.length < total MEL len*/
-        cmocka_unit_test(libspdm_test_responder_measurement_extension_log_case2),
+        cmocka_unit_test(rsp_measurement_extension_log_case2),
         /* Success Case, request.length > LIBSPDM_MAX_MEL_BLOCK_LEN*/
-        cmocka_unit_test(libspdm_test_responder_measurement_extension_log_case3),
+        cmocka_unit_test(rsp_measurement_extension_log_case3),
         /* failed Case,  request.offset > total MEL len*/
-        cmocka_unit_test(libspdm_test_responder_measurement_extension_log_case4),
+        cmocka_unit_test(rsp_measurement_extension_log_case4),
         /* Success Case, request.offset < total MEL len*/
-        cmocka_unit_test(libspdm_test_responder_measurement_extension_log_case5),
+        cmocka_unit_test(rsp_measurement_extension_log_case5),
     };
 
     libspdm_test_context_t test_context = {
@@ -377,7 +377,7 @@ int libspdm_responder_measurement_extension_log_test_main(void)
 
     libspdm_setup_test_context(&test_context);
 
-    return cmocka_run_group_tests(spdm_responder_measurement_extension_log_tests,
+    return cmocka_run_group_tests(test_cases,
                                   libspdm_unit_test_group_setup,
                                   libspdm_unit_test_group_teardown);
 }

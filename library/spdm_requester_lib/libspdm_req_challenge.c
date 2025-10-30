@@ -1,12 +1,12 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2024 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
 #include "internal/libspdm_requester_lib.h"
 
-#if LIBSPDM_ENABLE_CAPABILITY_CHAL_CAP
+#if LIBSPDM_SEND_CHALLENGE_SUPPORT
 
 #pragma pack(1)
 typedef struct {
@@ -17,7 +17,7 @@ typedef struct {
     uint16_t opaque_length;
     uint8_t opaque_data[SPDM_MAX_OPAQUE_DATA_SIZE];
     uint8_t requester_context[SPDM_REQ_CONTEXT_SIZE];
-    uint8_t signature[LIBSPDM_MAX_ASYM_KEY_SIZE];
+    uint8_t signature[LIBSPDM_RSP_SIGNATURE_DATA_MAX_SIZE];
 } libspdm_challenge_auth_response_max_t;
 #pragma pack()
 
@@ -39,10 +39,6 @@ typedef struct {
  * @param  requester_nonce_in     If not NULL, a buffer that holds the requester nonce (32 bytes)
  * @param  requester_nonce        If not NULL, a buffer to hold the requester nonce (32 bytes).
  * @param  responder_nonce        If not NULL, a buffer to hold the responder nonce (32 bytes).
- *
- * @retval RETURN_SUCCESS               The challenge auth is got successfully.
- * @retval RETURN_DEVICE_ERROR          A device error occurs when communicates with the device.
- * @retval RETURN_SECURITY_VIOLATION    Any verification fails.
  **/
 static libspdm_return_t libspdm_try_challenge(libspdm_context_t *spdm_context,
                                               uint8_t slot_id,
@@ -122,7 +118,7 @@ static libspdm_return_t libspdm_try_challenge(libspdm_context_t *spdm_context,
         spdm_request_size = sizeof(spdm_challenge_request_t);
     }
     if (requester_nonce_in == NULL) {
-        if(!libspdm_get_random_number(SPDM_NONCE_SIZE, spdm_request->nonce)) {
+        if (!libspdm_get_random_number(SPDM_NONCE_SIZE, spdm_request->nonce)) {
             libspdm_release_sender_buffer (spdm_context);
             return LIBSPDM_STATUS_LOW_ENTROPY;
         }
@@ -177,10 +173,6 @@ static libspdm_return_t libspdm_try_challenge(libspdm_context_t *spdm_context,
         status = LIBSPDM_STATUS_INVALID_MSG_SIZE;
         goto receive_done;
     }
-    if (spdm_response->header.spdm_version != spdm_request->header.spdm_version) {
-        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
-        goto receive_done;
-    }
     if (spdm_response->header.request_response_code == SPDM_ERROR) {
         status = libspdm_handle_error_response_main(
             spdm_context, NULL,
@@ -190,6 +182,10 @@ static libspdm_return_t libspdm_try_challenge(libspdm_context_t *spdm_context,
             goto receive_done;
         }
     } else if (spdm_response->header.request_response_code != SPDM_CHALLENGE_AUTH) {
+        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
+        goto receive_done;
+    }
+    if (spdm_response->header.spdm_version != spdm_request->header.spdm_version) {
         status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
         goto receive_done;
     }
@@ -228,8 +224,13 @@ static libspdm_return_t libspdm_try_challenge(libspdm_context_t *spdm_context,
 
     /* -=[Process Response Phase]=- */
     hash_size = libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
-    signature_size = libspdm_get_asym_signature_size(
-        spdm_context->connection_info.algorithm.base_asym_algo);
+    if (spdm_context->connection_info.algorithm.pqc_asym_algo != 0) {
+        signature_size = libspdm_get_pqc_asym_signature_size(
+            spdm_context->connection_info.algorithm.pqc_asym_algo);
+    } else {
+        signature_size = libspdm_get_asym_signature_size(
+            spdm_context->connection_info.algorithm.base_asym_algo);
+    }
     measurement_summary_hash_size = libspdm_get_measurement_summary_hash_size(
         spdm_context, true, measurement_hash_type);
 
@@ -373,6 +374,10 @@ static libspdm_return_t libspdm_try_challenge(libspdm_context_t *spdm_context,
         *slot_mask = spdm_response->header.param2;
     }
 
+    /* At this point the Requester has successfully authenticated the Responder, even if the
+     * the Responder intends to authenticate the Requester. */
+    spdm_context->connection_info.connection_state = LIBSPDM_CONNECTION_STATE_AUTHENTICATED;
+
     /* -=[Update State Phase]=- */
 #if (LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP) && (LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP)
     if ((auth_attribute & SPDM_CHALLENGE_AUTH_RESPONSE_ATTRIBUTE_BASIC_MUT_AUTH_REQ) != 0) {
@@ -387,12 +392,10 @@ static libspdm_return_t libspdm_try_challenge(libspdm_context_t *spdm_context,
             libspdm_reset_message_c(spdm_context);
             return status;
         }
-        spdm_context->connection_info.connection_state = LIBSPDM_CONNECTION_STATE_AUTHENTICATED;
         return LIBSPDM_STATUS_SUCCESS;
     }
 #endif /* (LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP) && (LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP) */
 
-    spdm_context->connection_info.connection_state = LIBSPDM_CONNECTION_STATE_AUTHENTICATED;
     status = LIBSPDM_STATUS_SUCCESS;
 
 receive_done:
@@ -509,4 +512,4 @@ libspdm_return_t libspdm_challenge_ex2(void *spdm_context, void *reserved,
     return status;
 }
 
-#endif /* LIBSPDM_ENABLE_CAPABILITY_CHAL_CAP */
+#endif /* LIBSPDM_SEND_CHALLENGE_SUPPORT */

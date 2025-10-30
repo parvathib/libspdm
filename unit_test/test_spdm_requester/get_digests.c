@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2022 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -24,9 +24,8 @@ static spdm_key_usage_bit_mask_t m_local_key_usage_bit_mask[SPDM_MAX_SLOT_COUNT]
 static spdm_certificate_info_t m_local_cert_info[SPDM_MAX_SLOT_COUNT];
 static spdm_key_pair_id_t m_local_key_pair_id[SPDM_MAX_SLOT_COUNT];
 
-static libspdm_return_t libspdm_requester_get_digests_test_send_message(
-    void *spdm_context, size_t request_size, const void *request,
-    uint64_t timeout)
+static libspdm_return_t send_message(
+    void *spdm_context, size_t request_size, const void *request, uint64_t timeout)
 {
     libspdm_test_context_t *spdm_test_context;
 
@@ -98,9 +97,8 @@ static libspdm_return_t libspdm_requester_get_digests_test_send_message(
     }
 }
 
-static libspdm_return_t libspdm_requester_get_digests_test_receive_message(
-    void *spdm_context, size_t *response_size,
-    void **response, uint64_t timeout)
+static libspdm_return_t receive_message(
+    void *spdm_context, size_t *response_size, void **response, uint64_t timeout)
 {
     libspdm_test_context_t *spdm_test_context;
 
@@ -1191,7 +1189,7 @@ static libspdm_return_t libspdm_requester_get_digests_test_receive_message(
  * Test 1:
  * Expected Behavior:
  **/
-static void libspdm_test_requester_get_digests_case1(void **state)
+static void req_get_digests_case1(void **state)
 {
 }
 
@@ -1199,7 +1197,7 @@ static void libspdm_test_requester_get_digests_case1(void **state)
  * Test 2: a request message is successfully sent and a response message is successfully received
  * Expected Behavior: requester returns the status LIBSPDM_STATUS_SUCCESS and a DIGESTS message is received
  **/
-static void libspdm_test_requester_get_digests_case2(void **state)
+static void req_get_digests_case2(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -1270,7 +1268,7 @@ static void libspdm_test_requester_get_digests_case2(void **state)
  * Test 3:
  * Expected Behavior:
  **/
-static void libspdm_test_requester_get_digests_case3(void **state)
+static void req_get_digests_case3(void **state)
 {
 }
 
@@ -1278,7 +1276,7 @@ static void libspdm_test_requester_get_digests_case3(void **state)
  * Test 4:
  * Expected Behavior:
  **/
-static void libspdm_test_requester_get_digests_case4(void **state)
+static void req_get_digests_case4(void **state)
 {
 }
 
@@ -1286,7 +1284,7 @@ static void libspdm_test_requester_get_digests_case4(void **state)
  * Test 5:
  * Expected Behavior:
  **/
-static void libspdm_test_requester_get_digests_case5(void **state)
+static void req_get_digests_case5(void **state)
 {
 }
 
@@ -1294,7 +1292,7 @@ static void libspdm_test_requester_get_digests_case5(void **state)
  * Test 6:
  * Expected Behavior:
  **/
-static void libspdm_test_requester_get_digests_case6(void **state)
+static void req_get_digests_case6(void **state)
 {
 }
 
@@ -1302,7 +1300,7 @@ static void libspdm_test_requester_get_digests_case6(void **state)
  * Test 7:
  * Expected Behavior:
  **/
-static void libspdm_test_requester_get_digests_case7(void **state)
+static void req_get_digests_case7(void **state)
 {
 }
 
@@ -1310,7 +1308,7 @@ static void libspdm_test_requester_get_digests_case7(void **state)
  * Test 8:
  * Expected Behavior:
  **/
-static void libspdm_test_requester_get_digests_case8(void **state)
+static void req_get_digests_case8(void **state)
 {
 }
 
@@ -1318,7 +1316,7 @@ static void libspdm_test_requester_get_digests_case8(void **state)
  * Test 9:
  * Expected Behavior:
  **/
-static void libspdm_test_requester_get_digests_case9(void **state)
+static void req_get_digests_case9(void **state)
 {
 }
 
@@ -1326,7 +1324,7 @@ static void libspdm_test_requester_get_digests_case9(void **state)
  * Test 10:
  * Expected Behavior:
  **/
-static void libspdm_test_requester_get_digests_case10(void **state)
+static void req_get_digests_case10(void **state)
 {
 }
 
@@ -1334,7 +1332,7 @@ static void libspdm_test_requester_get_digests_case10(void **state)
  * Test 11:
  * Expected Behavior:
  **/
-static void libspdm_test_requester_get_digests_case11(void **state)
+static void req_get_digests_case11(void **state)
 {
 }
 
@@ -1342,7 +1340,7 @@ static void libspdm_test_requester_get_digests_case11(void **state)
  * Test 12:
  * Expected Behavior:
  **/
-static void libspdm_test_requester_get_digests_case12(void **state)
+static void req_get_digests_case12(void **state)
 {
 }
 
@@ -1350,7 +1348,7 @@ static void libspdm_test_requester_get_digests_case12(void **state)
  * Test 13:
  * Expected Behavior:
  **/
-static void libspdm_test_requester_get_digests_case13(void **state)
+static void req_get_digests_case13(void **state)
 {
 }
 
@@ -1358,7 +1356,7 @@ static void libspdm_test_requester_get_digests_case13(void **state)
  * Test 14:
  * Expected Behavior:
  **/
-static void libspdm_test_requester_get_digests_case14(void **state)
+static void req_get_digests_case14(void **state)
 {
 }
 
@@ -1366,7 +1364,7 @@ static void libspdm_test_requester_get_digests_case14(void **state)
  * Test 15:
  * Expected Behavior:
  **/
-static void libspdm_test_requester_get_digests_case15(void **state)
+static void req_get_digests_case15(void **state)
 {
 }
 
@@ -1374,7 +1372,7 @@ static void libspdm_test_requester_get_digests_case15(void **state)
  * Test 16:
  * Expected Behavior:
  **/
-static void libspdm_test_requester_get_digests_case16(void **state)
+static void req_get_digests_case16(void **state)
 {
 }
 
@@ -1382,7 +1380,7 @@ static void libspdm_test_requester_get_digests_case16(void **state)
  * Test 17:
  * Expected Behavior:
  **/
-static void libspdm_test_requester_get_digests_case17(void **state)
+static void req_get_digests_case17(void **state)
 {
 }
 
@@ -1390,7 +1388,7 @@ static void libspdm_test_requester_get_digests_case17(void **state)
  * Test 18:
  * Expected Behavior:
  **/
-static void libspdm_test_requester_get_digests_case18(void **state)
+static void req_get_digests_case18(void **state)
 {
 }
 
@@ -1398,7 +1396,7 @@ static void libspdm_test_requester_get_digests_case18(void **state)
  * Test 19:
  * Expected Behavior:
  **/
-static void libspdm_test_requester_get_digests_case19(void **state)
+static void req_get_digests_case19(void **state)
 {
 }
 
@@ -1406,7 +1404,7 @@ static void libspdm_test_requester_get_digests_case19(void **state)
  * Test 20:
  * Expected Behavior:
  **/
-static void libspdm_test_requester_get_digests_case20(void **state)
+static void req_get_digests_case20(void **state)
 {
 }
 
@@ -1414,7 +1412,7 @@ static void libspdm_test_requester_get_digests_case20(void **state)
  * Test 21:
  * Expected Behavior:
  **/
-static void libspdm_test_requester_get_digests_case21(void **state)
+static void req_get_digests_case21(void **state)
 {
 }
 
@@ -1422,17 +1420,17 @@ static void libspdm_test_requester_get_digests_case21(void **state)
  * Test 22:
  * Expected behavior:.
  **/
-static void libspdm_test_requester_get_digests_case22(void **state)
+static void req_get_digests_case22(void **state)
 {
 }
 
 /**
  * Test 23: a request message is successfully sent and a response message is successfully received.
  * Buffer B already has arbitrary data.
- * Expected Behavior: requester returns the status RETURN_SUCCESS and a DIGESTS message is
+ * Expected Behavior: requester returns the status LIBSPDM_STATUS_SUCCESS and a DIGESTS message is
  * received, buffer B appends the exchanged GET_DIGESTS and DIGESTS messages.
  **/
-static void libspdm_test_requester_get_digests_case23(void **state)
+static void req_get_digests_case23(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -1475,7 +1473,7 @@ static void libspdm_test_requester_get_digests_case23(void **state)
  * Test 24: Test case for GetDigest, GetCert and GetDigest
  * Expected Behavior: requester returns the status LIBSPDM_STATUS_SUCCESS and a second GetDigest can be sent.
  **/
-static void libspdm_test_requester_get_digests_case24(void **state)
+static void req_get_digests_case24(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -1511,9 +1509,11 @@ static void libspdm_test_requester_get_digests_case24(void **state)
         m_libspdm_use_req_asym_algo;
     spdm_context->local_context.is_requester = true;
 
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_x509_get_cert_from_cert_chain(
         (uint8_t *)data + sizeof(spdm_cert_chain_t) + hash_size,
         data_size - sizeof(spdm_cert_chain_t) - hash_size, 0,
@@ -1633,7 +1633,7 @@ static void libspdm_test_requester_get_digests_case24(void **state)
  * in a session.
  * Expected Behavior: requester returns the status LIBSPDM_STATUS_SUCCESS and a DIGESTS message is received
  **/
-static void libspdm_test_requester_get_digests_case25(void **state)
+static void req_get_digests_case25(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -1675,7 +1675,8 @@ static void libspdm_test_requester_get_digests_case25(void **state)
 
     session_id = 0xFFFFFFFF;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init(spdm_context, session_info, session_id, true);
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_secured_message_set_session_state(session_info->secured_message_context,
                                               LIBSPDM_SESSION_STATE_ESTABLISHED);
 
@@ -1727,7 +1728,7 @@ static void libspdm_test_requester_get_digests_case25(void **state)
  * Set multi_key_conn_rsp to check if it responds correctly
  * Expected Behavior: requester returns the status LIBSPDM_STATUS_SUCCESS
  **/
-static void libspdm_test_requester_get_digests_case26(void **state)
+static void req_get_digests_case26(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -1781,7 +1782,7 @@ static void libspdm_test_requester_get_digests_case26(void **state)
  * Set multi_key_conn_rsp to check if it responds correctly
  * Expected Behavior: requester returns the status LIBSPDM_STATUS_SUCCESS
  **/
-static void libspdm_test_requester_get_digests_case27(void **state)
+static void req_get_digests_case27(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -1877,7 +1878,7 @@ static void libspdm_test_requester_get_digests_case27(void **state)
  * Set KeyUsageMask to 0 and Set CertificateInfo to SPDM_CERTIFICATE_INFO_CERT_MODEL_GENERIC_CERT(GenericCert model)
  * Expected Behavior: requester returns the status LIBSPDM_STATUS_INVALID_MSG_FIELD
  **/
-static void libspdm_test_requester_get_digests_case28(void **state)
+static void req_get_digests_case28(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -1932,7 +1933,7 @@ static void libspdm_test_requester_get_digests_case28(void **state)
  * MULTI_KEY_CONN_REQ or MULTI_KEY_CONN_RSP is false.
  * Expected Behavior: requester returns the status LIBSPDM_STATUS_INVALID_MSG_FIELD
  **/
-static void libspdm_test_requester_get_digests_case29(void **state)
+static void req_get_digests_case29(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -1974,50 +1975,50 @@ static void libspdm_test_requester_get_digests_case29(void **state)
     assert_int_equal(status, LIBSPDM_STATUS_INVALID_MSG_FIELD);
 }
 
-int libspdm_requester_get_digests_test_main(void)
+int libspdm_req_get_digests_test(void)
 {
-    const struct CMUnitTest spdm_requester_get_digests_tests[] = {
-        cmocka_unit_test(libspdm_test_requester_get_digests_case1),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case2),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case3),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case4),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case5),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case6),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case7),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case8),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case9),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case10),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case11),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case12),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case13),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case14),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case15),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case16),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case17),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case18),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case19),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case20),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case21),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case22),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case23),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case24),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case25),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case26),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case27),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case28),
-        cmocka_unit_test(libspdm_test_requester_get_digests_case29),
+    const struct CMUnitTest test_cases[] = {
+        cmocka_unit_test(req_get_digests_case1),
+        cmocka_unit_test(req_get_digests_case2),
+        cmocka_unit_test(req_get_digests_case3),
+        cmocka_unit_test(req_get_digests_case4),
+        cmocka_unit_test(req_get_digests_case5),
+        cmocka_unit_test(req_get_digests_case6),
+        cmocka_unit_test(req_get_digests_case7),
+        cmocka_unit_test(req_get_digests_case8),
+        cmocka_unit_test(req_get_digests_case9),
+        cmocka_unit_test(req_get_digests_case10),
+        cmocka_unit_test(req_get_digests_case11),
+        cmocka_unit_test(req_get_digests_case12),
+        cmocka_unit_test(req_get_digests_case13),
+        cmocka_unit_test(req_get_digests_case14),
+        cmocka_unit_test(req_get_digests_case15),
+        cmocka_unit_test(req_get_digests_case16),
+        cmocka_unit_test(req_get_digests_case17),
+        cmocka_unit_test(req_get_digests_case18),
+        cmocka_unit_test(req_get_digests_case19),
+        cmocka_unit_test(req_get_digests_case20),
+        cmocka_unit_test(req_get_digests_case21),
+        cmocka_unit_test(req_get_digests_case22),
+        cmocka_unit_test(req_get_digests_case23),
+        cmocka_unit_test(req_get_digests_case24),
+        cmocka_unit_test(req_get_digests_case25),
+        cmocka_unit_test(req_get_digests_case26),
+        cmocka_unit_test(req_get_digests_case27),
+        cmocka_unit_test(req_get_digests_case28),
+        cmocka_unit_test(req_get_digests_case29),
     };
 
     libspdm_test_context_t test_context = {
         LIBSPDM_TEST_CONTEXT_VERSION,
         true,
-        libspdm_requester_get_digests_test_send_message,
-        libspdm_requester_get_digests_test_receive_message,
+        send_message,
+        receive_message,
     };
 
     libspdm_setup_test_context(&test_context);
 
-    return cmocka_run_group_tests(spdm_requester_get_digests_tests,
+    return cmocka_run_group_tests(test_cases,
                                   libspdm_unit_test_group_setup,
                                   libspdm_unit_test_group_teardown);
 }

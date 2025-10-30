@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2022 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -9,23 +9,9 @@
 
 #if LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP
 
-/**
- * Get the SPDM encapsulated KEY_UPDATE request.
- *
- * @param  spdm_context                  A pointer to the SPDM context.
- * @param  encap_request_size             size in bytes of the encapsulated request data.
- *                                     On input, it means the size in bytes of encapsulated request data buffer.
- *                                     On output, it means the size in bytes of copied encapsulated request data buffer if RETURN_SUCCESS is returned,
- *                                     and means the size in bytes of desired encapsulated request data buffer if RETURN_BUFFER_TOO_SMALL is returned.
- * @param  encap_request                 A pointer to the encapsulated request data.
- *
- * @retval RETURN_SUCCESS               The encapsulated request is returned.
- * @retval RETURN_BUFFER_TOO_SMALL      The buffer is too small to hold the data.
- **/
-libspdm_return_t
-libspdm_get_encap_request_key_update(libspdm_context_t *spdm_context,
-                                     size_t *encap_request_size,
-                                     void *encap_request)
+libspdm_return_t libspdm_get_encap_request_key_update(libspdm_context_t *spdm_context,
+                                                      size_t *encap_request_size,
+                                                      void *encap_request)
 {
     spdm_key_update_request_t *spdm_request;
     uint32_t session_id;
@@ -77,16 +63,16 @@ libspdm_get_encap_request_key_update(libspdm_context_t *spdm_context,
         spdm_request->header.param1 =
             SPDM_KEY_UPDATE_OPERATIONS_TABLE_UPDATE_KEY;
         spdm_request->header.param2 = 0;
-        if(!libspdm_get_random_number(sizeof(spdm_request->header.param2),
-                                      &spdm_request->header.param2)) {
+        if (!libspdm_get_random_number(sizeof(spdm_request->header.param2),
+                                       &spdm_request->header.param2)) {
             return LIBSPDM_STATUS_LOW_ENTROPY;
         }
     } else {
         spdm_request->header.param1 =
             SPDM_KEY_UPDATE_OPERATIONS_TABLE_VERIFY_NEW_KEY;
         spdm_request->header.param2 = 1;
-        if(!libspdm_get_random_number(sizeof(spdm_request->header.param2),
-                                      &spdm_request->header.param2)) {
+        if (!libspdm_get_random_number(sizeof(spdm_request->header.param2),
+                                       &spdm_request->header.param2)) {
             return LIBSPDM_STATUS_LOW_ENTROPY;
         }
 
@@ -127,18 +113,6 @@ libspdm_get_encap_request_key_update(libspdm_context_t *spdm_context,
     return LIBSPDM_STATUS_SUCCESS;
 }
 
-/**
- * Process the SPDM encapsulated KEY_UPDATE response.
- *
- * @param  spdm_context                  A pointer to the SPDM context.
- * @param  encap_response_size            size in bytes of the encapsulated response data.
- * @param  encap_response                A pointer to the encapsulated response data.
- * @param  need_continue                     Indicate if encapsulated communication need continue.
- *
- * @retval RETURN_SUCCESS               The encapsulated response is processed.
- * @retval RETURN_BUFFER_TOO_SMALL      The buffer is too small to hold the data.
- * @retval RETURN_SECURITY_VIOLATION    Any verification fails.
- **/
 libspdm_return_t libspdm_process_encap_response_key_update(
     libspdm_context_t *spdm_context, size_t encap_response_size,
     const void *encap_response, bool *need_continue)

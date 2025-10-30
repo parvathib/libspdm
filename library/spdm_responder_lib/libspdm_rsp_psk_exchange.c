@@ -58,7 +58,7 @@ static bool libspdm_generate_psk_exchange_rsp_hmac(libspdm_context_t *spdm_conte
     }
 #else
     result = libspdm_calculate_th_hmac_for_exchange_rsp(
-        spdm_context, session_info, false, &hash_size, hmac_data);
+        spdm_context, session_info, &hash_size, hmac_data);
     if (!result) {
         return false;
     }
@@ -98,6 +98,7 @@ libspdm_return_t libspdm_get_response_psk_exchange(libspdm_context_t *spdm_conte
     uint16_t context_length;
     const void *psk_hint;
     size_t psk_hint_size;
+    spdm_version_number_t secured_message_version;
 
     spdm_request = request;
 
@@ -256,7 +257,7 @@ libspdm_return_t libspdm_get_response_psk_exchange(libspdm_context_t *spdm_conte
                                                    response_size, response);
         }
         status = libspdm_process_opaque_data_supported_version_data(
-            spdm_context, spdm_request->opaque_length, cptr);
+            spdm_context, spdm_request->opaque_length, cptr, &secured_message_version);
         if (LIBSPDM_STATUS_IS_ERROR(status)) {
             return libspdm_generate_error_response(spdm_context,
                                                    SPDM_ERROR_CODE_INVALID_REQUEST, 0,
@@ -303,7 +304,7 @@ libspdm_return_t libspdm_get_response_psk_exchange(libspdm_context_t *spdm_conte
     if (spdm_request->psk_hint_length == 0) {
         psk_hint_size = 0;
         psk_hint = NULL;
-    } else if(spdm_request->psk_hint_length <= LIBSPDM_PSK_MAX_HINT_LENGTH ) {
+    } else if (spdm_request->psk_hint_length <= LIBSPDM_PSK_MAX_HINT_LENGTH ) {
         psk_hint_size = spdm_request->psk_hint_length;
         psk_hint = (const uint8_t *)request +
                    sizeof(spdm_psk_exchange_request_t);
@@ -313,7 +314,8 @@ libspdm_return_t libspdm_get_response_psk_exchange(libspdm_context_t *spdm_conte
             response_size, response);
     }
     session_id = libspdm_generate_session_id(req_session_id, rsp_session_id);
-    session_info = libspdm_assign_session_id(spdm_context, session_id, true);
+    session_info = libspdm_assign_session_id(spdm_context, session_id, secured_message_version,
+                                             true);
     if (session_info == NULL) {
         return libspdm_generate_error_response(
             spdm_context, SPDM_ERROR_CODE_SESSION_LIMIT_EXCEEDED, 0,
@@ -334,12 +336,11 @@ libspdm_return_t libspdm_get_response_psk_exchange(libspdm_context_t *spdm_conte
 
 #if LIBSPDM_ENABLE_CAPABILITY_MEAS_CAP
     if (libspdm_is_capabilities_flag_supported(
-            spdm_context, false, 0,  SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_MEAS_CAP)) {
-
+            spdm_context, false, 0, SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_MEAS_CAP) &&
+        ((spdm_request->header.param1 == SPDM_REQUEST_TCB_COMPONENT_MEASUREMENT_HASH) ||
+         (spdm_request->header.param1 == SPDM_REQUEST_ALL_MEASUREMENTS_HASH))) {
         result = libspdm_generate_measurement_summary_hash(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
             spdm_context,
-#endif
             spdm_context->connection_info.version,
             spdm_context->connection_info.algorithm.base_hash_algo,
             spdm_context->connection_info.algorithm.measurement_spec,
@@ -347,22 +348,20 @@ libspdm_return_t libspdm_get_response_psk_exchange(libspdm_context_t *spdm_conte
             spdm_request->header.param1,
             ptr,
             measurement_summary_hash_size);
-    } else {
-        result = true;
-    }
 
-    if (!result) {
-        libspdm_free_session_id(spdm_context, session_id);
-        return libspdm_generate_error_response(spdm_context,
-                                               SPDM_ERROR_CODE_UNSPECIFIED, 0,
-                                               response_size, response);
+        if (!result) {
+            libspdm_free_session_id(spdm_context, session_id);
+            return libspdm_generate_error_response(spdm_context,
+                                                   SPDM_ERROR_CODE_UNSPECIFIED, 0,
+                                                   response_size, response);
+        }
     }
 #endif /* LIBSPDM_ENABLE_CAPABILITY_MEAS_CAP */
 
     ptr += measurement_summary_hash_size;
 
     if (context_length != 0) {
-        if(!libspdm_get_random_number(context_length, ptr)) {
+        if (!libspdm_get_random_number(context_length, ptr)) {
             libspdm_free_session_id(spdm_context, session_id);
             return libspdm_generate_error_response(spdm_context,
                                                    SPDM_ERROR_CODE_UNSPECIFIED, 0,
@@ -372,7 +371,7 @@ libspdm_return_t libspdm_get_response_psk_exchange(libspdm_context_t *spdm_conte
     }
 
     libspdm_build_opaque_data_version_selection_data(
-        spdm_context, &opaque_psk_exchange_rsp_size, ptr);
+        spdm_context, secured_message_version, &opaque_psk_exchange_rsp_size, ptr);
 
     ptr += opaque_psk_exchange_rsp_size;
 

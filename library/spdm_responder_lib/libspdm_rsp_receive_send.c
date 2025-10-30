@@ -102,7 +102,7 @@ libspdm_get_spdm_response_func libspdm_get_response_func_via_request_code(uint8_
         #endif /* LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP */
 
         #if LIBSPDM_ENABLE_CAPABILITY_EVENT_CAP
-        { SPDM_SUPPORTED_EVENT_TYPES, libspdm_get_response_supported_event_types },
+        { SPDM_GET_SUPPORTED_EVENT_TYPES, libspdm_get_response_supported_event_types },
         { SPDM_SUBSCRIBE_EVENT_TYPES, libspdm_get_response_subscribe_event_types_ack },
         #endif /* LIBSPDM_ENABLE_CAPABILITY_EVENT_CAP */
 
@@ -147,9 +147,6 @@ static libspdm_get_spdm_response_func libspdm_get_response_func_via_last_request
  * @param  request                      A pointer to a destination buffer to store the request.
  *                                     The caller is responsible for having
  *                                     either implicit or explicit ownership of the buffer.
- *
- * @retval RETURN_SUCCESS               The SPDM request is received successfully.
- * @retval RETURN_DEVICE_ERROR          A device error occurs when the SPDM request is received from the device.
  **/
 libspdm_return_t libspdm_process_request(void *spdm_context, uint32_t **session_id,
                                          bool *is_app_message,
@@ -366,6 +363,31 @@ void libspdm_set_session_state(libspdm_context_t *spdm_context,
 }
 
 /**
+ * This function allows the consumer to terminate a session.
+ * For example, it can be used when the heartbeat period is over.
+ *
+ * @param  spdm_context                 A pointer to the SPDM context.
+ * @param  session_id                   session_id of the session to be terminated.
+ *
+ * @retval LIBSPDM_STATUS_SUCCESS Success
+ * @retval LIBSPDM_STATUS_INVALID_PARAMETER session_id is invalid.
+ **/
+libspdm_return_t libspdm_terminate_session(
+    void *spdm_context, uint32_t session_id)
+{
+    libspdm_session_info_t *session_info;
+
+    session_info = libspdm_get_session_info_via_session_id(spdm_context, session_id);
+    if (session_info == NULL) {
+        return LIBSPDM_STATUS_INVALID_PARAMETER;
+    }
+
+    libspdm_set_session_state(spdm_context, session_id, LIBSPDM_SESSION_STATE_NOT_STARTED);
+    libspdm_free_session_id(spdm_context, session_id);
+    return LIBSPDM_STATUS_SUCCESS;
+}
+
+/**
  * Notify the connection state to an SPDM context register.
  *
  * @param  spdm_context                  A pointer to the SPDM context.
@@ -409,24 +431,6 @@ void libspdm_trigger_key_update_callback(void *spdm_context, uint32_t session_id
     }
 }
 
-/**
- * Build a SPDM response to a device.
- *
- * @param  spdm_context                  The SPDM context for the device.
- * @param  session_id                    Indicate if the response is a secured message.
- *                                     If session_id is NULL, it is a normal message.
- *                                     If session_id is NOT NULL, it is a secured message.
- * @param  is_app_message                 Indicates if it is an APP message or SPDM message.
- * @param  response_size                 size in bytes of the response data buffer.
- * @param  response                     A pointer to a destination buffer to store the response.
- *                                     The caller is responsible for having
- *                                     either implicit or explicit ownership of the buffer.
- *
- * @retval RETURN_SUCCESS               The SPDM response is sent successfully.
- * @retval RETURN_DEVICE_ERROR          A device error occurs when the SPDM response is sent to the device.
- * @retval RETURN_UNSUPPORTED           Just ignore this message: return UNSUPPORTED and clear response_size.
- *                                      Continue the dispatch without send response.
- **/
 libspdm_return_t libspdm_build_response(void *spdm_context, const uint32_t *session_id,
                                         bool is_app_message,
                                         size_t *response_size,
@@ -456,6 +460,7 @@ libspdm_return_t libspdm_build_response(void *spdm_context, const uint32_t *sess
     libspdm_chunk_info_t *get_info;
     spdm_chunk_response_response_t *chunk_rsp;
     uint8_t *chunk_ptr;
+    size_t chunk_send_ack_response_header_size;
     #endif /* LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP */
 
     context = spdm_context;
@@ -491,8 +496,8 @@ libspdm_return_t libspdm_build_response(void *spdm_context, const uint32_t *sess
         switch (context->last_spdm_error.error_code) {
         case SPDM_ERROR_CODE_DECRYPT_ERROR:
             /* session ID is valid. Use it to encrypt the error message.*/
-            if((context->handle_error_return_policy &
-                LIBSPDM_DATA_HANDLE_ERROR_RETURN_POLICY_DROP_ON_DECRYPT_ERROR) == 0) {
+            if ((context->handle_error_return_policy &
+                 LIBSPDM_DATA_HANDLE_ERROR_RETURN_POLICY_DROP_ON_DECRYPT_ERROR) == 0) {
                 status = libspdm_generate_error_response(
                     context, SPDM_ERROR_CODE_DECRYPT_ERROR, 0,
                     &my_response_size, my_response);
@@ -629,6 +634,14 @@ libspdm_return_t libspdm_build_response(void *spdm_context, const uint32_t *sess
         }
     }
 
+    #if LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP
+    if (libspdm_get_connection_version(context) < SPDM_MESSAGE_VERSION_14) {
+        chunk_send_ack_response_header_size = sizeof(spdm_chunk_send_ack_response_t);
+    } else {
+        chunk_send_ack_response_header_size = sizeof(spdm_chunk_send_ack_response_14_t);
+    }
+    #endif /* LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP */
+
     if (status == LIBSPDM_STATUS_SUCCESS) {
         LIBSPDM_ASSERT (my_response_size <= context->local_context.capability.max_spdm_msg_size);
         /* large SPDM message is the SPDM message whose size is greater than the DataTransferSize of the receiving
@@ -687,12 +700,11 @@ libspdm_return_t libspdm_build_response(void *spdm_context, const uint32_t *sess
             if (((spdm_message_header_t *)my_response)
                 ->request_response_code == SPDM_CHUNK_SEND_ACK) {
                 libspdm_copy_mem(large_buffer, large_buffer_size,
-                                 my_response + sizeof(spdm_chunk_send_ack_response_t),
-                                 my_response_size - sizeof(spdm_chunk_send_ack_response_t));
-
+                                 my_response + chunk_send_ack_response_header_size,
+                                 my_response_size - chunk_send_ack_response_header_size);
                 get_info->large_message = large_buffer;
                 get_info->large_message_size =
-                    my_response_size - sizeof(spdm_chunk_send_ack_response_t);
+                    my_response_size - chunk_send_ack_response_header_size;
             } else {
                 libspdm_copy_mem(large_buffer, large_buffer_size, my_response, my_response_size);
 
@@ -724,7 +736,7 @@ libspdm_return_t libspdm_build_response(void *spdm_context, const uint32_t *sess
     /* if return the status: Responder drop the response
      * just ignore this message
      * return UNSUPPORTED and clear response_size to continue the dispatch without send response.*/
-    if((my_response_size == 0) && (status == LIBSPDM_STATUS_UNSUPPORTED_CAP)) {
+    if ((my_response_size == 0) && (status == LIBSPDM_STATUS_UNSUPPORTED_CAP)) {
         *response_size = 0;
         return LIBSPDM_STATUS_UNSUPPORTED_CAP;
     }
@@ -762,9 +774,9 @@ libspdm_return_t libspdm_build_response(void *spdm_context, const uint32_t *sess
     #if LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP
     switch (request_response_code) {
     case SPDM_CHUNK_SEND_ACK:
-        if (my_response_size > sizeof(spdm_chunk_send_ack_response_t)) {
+        if (my_response_size > chunk_send_ack_response_header_size) {
             request_response_code =
-                ((spdm_message_header_t *)(my_response + sizeof(spdm_chunk_send_ack_response_t)))
+                ((spdm_message_header_t *)(my_response + chunk_send_ack_response_header_size))
                 ->request_response_code;
         }
         break;
@@ -796,7 +808,6 @@ libspdm_return_t libspdm_build_response(void *spdm_context, const uint32_t *sess
             libspdm_set_session_state(context, *session_id, LIBSPDM_SESSION_STATE_ESTABLISHED);
             break;
         case SPDM_END_SESSION_ACK:
-            libspdm_set_session_state(context, *session_id, LIBSPDM_SESSION_STATE_NOT_STARTED);
             #if LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP
             if (libspdm_is_capabilities_flag_supported(
                     context, false,
@@ -809,7 +820,7 @@ libspdm_return_t libspdm_build_response(void *spdm_context, const uint32_t *sess
                 }
             }
             #endif /* LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP */
-            libspdm_free_session_id(context, *session_id);
+            libspdm_terminate_session(context, *session_id);
             break;
         default:
             #if LIBSPDM_ENABLE_CAPABILITY_HBEAT_CAP

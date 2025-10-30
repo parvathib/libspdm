@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2024 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -12,7 +12,7 @@
 
 static uint8_t m_requester_context[SPDM_REQ_CONTEXT_SIZE];
 
-void libspdm_test_responder_encap_challenge_case1(void **state)
+static void rsp_encap_challenge_case1(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -81,12 +81,10 @@ void libspdm_test_responder_encap_challenge_case1(void **state)
     ptr += sizeof(uint16_t);
 
     libspdm_requester_data_sign(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
         spdm_context,
-#endif
         spdm_response->header.spdm_version << SPDM_VERSION_NUMBER_SHIFT_BIT,
-            SPDM_CHALLENGE_AUTH,
-            m_libspdm_use_req_asym_algo, m_libspdm_use_hash_algo,
+            0, SPDM_CHALLENGE_AUTH,
+            m_libspdm_use_req_asym_algo, m_libspdm_use_req_pqc_asym_algo, m_libspdm_use_hash_algo,
             false, (uint8_t*)spdm_response, response_size - sig_size,
             ptr, &sig_size);
 
@@ -103,7 +101,7 @@ void libspdm_test_responder_encap_challenge_case1(void **state)
     free(data);
 }
 
-void libspdm_test_responder_encap_challenge_case2(void **state)
+static void rsp_encap_challenge_case2(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -171,7 +169,7 @@ void libspdm_test_responder_encap_challenge_case2(void **state)
 }
 
 
-void libspdm_test_responder_encap_challenge_case3(void **state)
+static void rsp_encap_challenge_case3(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -238,7 +236,7 @@ void libspdm_test_responder_encap_challenge_case3(void **state)
     free(data);
 }
 
-void libspdm_test_responder_encap_challenge_case4(void **state)
+static void rsp_encap_challenge_case4(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -305,7 +303,7 @@ void libspdm_test_responder_encap_challenge_case4(void **state)
     free(data);
 }
 
-void libspdm_test_responder_encap_challenge_case5(void **state)
+static void rsp_encap_challenge_case5(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -359,12 +357,10 @@ void libspdm_test_responder_encap_challenge_case5(void **state)
     ptr += sizeof(uint16_t);
 
     libspdm_requester_data_sign(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
         spdm_context,
-#endif
         spdm_response->header.spdm_version << SPDM_VERSION_NUMBER_SHIFT_BIT,
-            SPDM_CHALLENGE_AUTH,
-            m_libspdm_use_req_asym_algo, m_libspdm_use_hash_algo,
+            0, SPDM_CHALLENGE_AUTH,
+            m_libspdm_use_req_asym_algo, m_libspdm_use_req_pqc_asym_algo, m_libspdm_use_hash_algo,
             false, (uint8_t*)spdm_response, response_size - sig_size,
             ptr, &sig_size);
 
@@ -377,9 +373,9 @@ void libspdm_test_responder_encap_challenge_case5(void **state)
 
 /**
  * Test 6: Successful case , With the correct challenge context field
- * Expected Behavior: client returns a status of RETURN_SUCCESS.
+ * Expected Behavior: client returns a status of LIBSPDM_STATUS_SUCCESS.
  **/
-void libspdm_test_responder_encap_challenge_case6(void **state)
+static void rsp_encap_challenge_case6(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -455,12 +451,10 @@ void libspdm_test_responder_encap_challenge_case6(void **state)
     ptr += SPDM_REQ_CONTEXT_SIZE;
 
     libspdm_requester_data_sign(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
         spdm_context,
-#endif
         spdm_response->header.spdm_version << SPDM_VERSION_NUMBER_SHIFT_BIT,
-            SPDM_CHALLENGE_AUTH,
-            m_libspdm_use_req_asym_algo, m_libspdm_use_hash_algo,
+            0, SPDM_CHALLENGE_AUTH,
+            m_libspdm_use_req_asym_algo, m_libspdm_use_req_pqc_asym_algo, m_libspdm_use_hash_algo,
             false, (uint8_t*)spdm_response, response_size - sig_size,
             ptr, &sig_size);
 
@@ -477,20 +471,20 @@ void libspdm_test_responder_encap_challenge_case6(void **state)
     free(data);
 }
 
-int libspdm_responder_encap_challenge_auth_test_main(void)
+int libspdm_rsp_encap_challenge_test(void)
 {
-    const struct CMUnitTest spdm_responder_challenge_tests[] = {
-        cmocka_unit_test(libspdm_test_responder_encap_challenge_case1),
+    const struct CMUnitTest test_cases[] = {
+        cmocka_unit_test(rsp_encap_challenge_case1),
         /* Error response: SPDM_ERROR*/
-        cmocka_unit_test(libspdm_test_responder_encap_challenge_case2),
+        cmocka_unit_test(rsp_encap_challenge_case2),
         /* Error request_response_code  : SPDM_CERTIFICATE */
-        cmocka_unit_test(libspdm_test_responder_encap_challenge_case3),
+        cmocka_unit_test(rsp_encap_challenge_case3),
         /* Error spdm_response_size */
-        cmocka_unit_test(libspdm_test_responder_encap_challenge_case4),
+        cmocka_unit_test(rsp_encap_challenge_case4),
         /* Success Case, use provisioned public key (slot 0xFF) */
-        cmocka_unit_test(libspdm_test_responder_encap_challenge_case5),
+        cmocka_unit_test(rsp_encap_challenge_case5),
         /* Success Case, V1.3 With the correct challenge context field */
-        cmocka_unit_test(libspdm_test_responder_encap_challenge_case6),
+        cmocka_unit_test(rsp_encap_challenge_case6),
     };
 
     libspdm_test_context_t test_context = {
@@ -500,7 +494,7 @@ int libspdm_responder_encap_challenge_auth_test_main(void)
 
     libspdm_setup_test_context(&test_context);
 
-    return cmocka_run_group_tests(spdm_responder_challenge_tests,
+    return cmocka_run_group_tests(test_cases,
                                   libspdm_unit_test_group_setup,
                                   libspdm_unit_test_group_teardown);
 }

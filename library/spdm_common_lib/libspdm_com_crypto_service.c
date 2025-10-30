@@ -7,6 +7,39 @@
 #include "internal/libspdm_common_lib.h"
 
 /**
+ * Map slot ID to key pair ID.
+ *
+ * @param  spdm_context   A pointer to the SPDM context.
+ * @param  slot_id        The slot ID.
+ * @param  is_requester   Indicate of the key generation for a requester or a responder.
+ *
+ * @return key pair ID.
+ */
+uint8_t libspdm_slot_id_to_key_pair_id (
+    void *spdm_context,
+    uint8_t slot_id,
+    bool is_requester)
+{
+    libspdm_context_t *context;
+
+    context = spdm_context;
+    if (slot_id == 0xFF || slot_id == 0xF) {
+        return 0;
+    }
+    if (is_requester) {
+        if (!context->connection_info.multi_key_conn_req) {
+            return 0;
+        }
+    } else {
+        if (!context->connection_info.multi_key_conn_rsp) {
+            return 0;
+        }
+    }
+    LIBSPDM_ASSERT(slot_id < SPDM_MAX_SLOT_COUNT);
+    return context->local_context.local_key_pair_id[slot_id];
+}
+
+/**
  * This function returns peer certificate chain buffer including spdm_cert_chain_t header.
  *
  * @param  spdm_context                  A pointer to the SPDM context.
@@ -181,17 +214,6 @@ bool libspdm_get_local_public_key_buffer(void *spdm_context,
 }
 
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
-/*
- * This function calculates l1l2.
- * If session_info is NULL, this function will use M cache of SPDM context,
- * else will use M cache of SPDM session context.
- *
- * @param  spdm_context                  A pointer to the SPDM context.
- * @param  session_info                  A pointer to the SPDM session context.
- * @param  l1l2                          The buffer to store the l1l2.
- *
- * @retval RETURN_SUCCESS  l1l2 is calculated.
- */
 bool libspdm_calculate_l1l2(libspdm_context_t *spdm_context,
                             void *session_info,
                             libspdm_l1l2_managed_buffer_t *l1l2)
@@ -263,18 +285,6 @@ bool libspdm_calculate_l1l2(libspdm_context_t *spdm_context,
     return true;
 }
 #else
-/*
- * This function calculates l1l2 hash.
- * If session_info is NULL, this function will use M cache of SPDM context,
- * else will use M cache of SPDM session context.
- *
- * @param  spdm_context                  A pointer to the SPDM context.
- * @param  session_info                  A pointer to the SPDM session context.
- * @param  l1l2_hash_size               size in bytes of the l1l2 hash
- * @param  l1l2_hash                   The buffer to store the l1l2 hash
- *
- * @retval RETURN_SUCCESS  l1l2 is calculated.
- */
 bool libspdm_calculate_l1l2_hash(libspdm_context_t *spdm_context,
                                  void *session_info,
                                  size_t *l1l2_hash_size, void *l1l2_hash)
@@ -317,8 +327,6 @@ bool libspdm_calculate_l1l2_hash(libspdm_context_t *spdm_context,
  * @param  spdm_context                  A pointer to the SPDM context.
  * @param  is_mut                        Indicate if this is from mutual authentication.
  * @param  m1m2                          The buffer to store the m1m2
- *
- * @retval RETURN_SUCCESS  m1m2 is calculated.
  */
 static bool libspdm_calculate_m1m2(void *context, bool is_mut,
                                    libspdm_m1m2_managed_buffer_t *m1m2)
@@ -450,8 +458,6 @@ static bool libspdm_calculate_m1m2(void *context, bool is_mut,
  * @param  is_mut                        Indicate if this is from mutual authentication.
  * @param  m1m2_hash_size               size in bytes of the m1m2 hash
  * @param  m1m2_hash                   The buffer to store the m1m2 hash
- *
- * @retval RETURN_SUCCESS  m1m2 is calculated.
  */
 static bool libspdm_calculate_m1m2_hash(void *context, bool is_mut,
                                         size_t *m1m2_hash_size,
@@ -493,18 +499,6 @@ static bool libspdm_calculate_m1m2_hash(void *context, bool is_mut,
 #endif
 
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
-/*
- * This function calculates il1il2.
- * If session_info is NULL, this function will use E cache of SPDM context,
- * else will use E cache of SPDM session context.
- *
- * @param  spdm_context                  A pointer to the SPDM context.
- * @param  session_info                  A pointer to the SPDM session context.
- * @param  is_mut                        Indicate if this is from mutual authentication.
- * @param  il1il2                        The buffer to store the il1il2.
- *
- * @retval RETURN_SUCCESS  il1il2 is calculated.
- */
 bool libspdm_calculate_il1il2(libspdm_context_t *spdm_context,
                               void *session_info,
                               bool is_mut,
@@ -627,19 +621,6 @@ bool libspdm_calculate_il1il2(libspdm_context_t *spdm_context,
     return true;
 }
 #else
-/*
- * This function calculates il1il2 hash.
- * If session_info is NULL, this function will use E cache of SPDM context,
- * else will use E cache of SPDM session context.
- *
- * @param  spdm_context                  A pointer to the SPDM context.
- * @param  session_info                  A pointer to the SPDM session context.
- * @param  is_encap                      Indicate if this is from encapsulate request.
- * @param  il1il2_hash_size              size in bytes of the il1il2 hash
- * @param  il1il2_hash                   The buffer to store the il1il2 hash
- *
- * @retval RETURN_SUCCESS  il1il2 is calculated.
- */
 bool libspdm_calculate_il1il2_hash(libspdm_context_t *spdm_context,
                                    void *session_info, bool is_encap,
                                    size_t *il1il2_hash_size, void *il1il2_hash)
@@ -786,32 +767,34 @@ bool libspdm_verify_peer_cert_chain_buffer_integrity(libspdm_context_t *spdm_con
                                                      size_t cert_chain_buffer_size)
 {
     bool result;
-    bool is_device_cert_model;
+    uint8_t cert_model;
     bool is_requester;
 
     is_requester = spdm_context->local_context.is_requester;
 
-    is_device_cert_model = false;
+    cert_model = SPDM_CERTIFICATE_INFO_CERT_MODEL_ALIAS_CERT;
     /* Responder does not determine Requester's certificate model */
     if (is_requester) {
-        if((spdm_context->connection_info.capability.flags &
-            SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_ALIAS_CERT_CAP) == 0) {
-            is_device_cert_model = true;
+        if ((spdm_context->connection_info.capability.flags &
+             SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_ALIAS_CERT_CAP) == 0) {
+            cert_model = SPDM_CERTIFICATE_INFO_CERT_MODEL_DEVICE_CERT;
         }
     }
 
     if (is_requester) {
-        result = libspdm_verify_certificate_chain_buffer(
+        result = libspdm_verify_certificate_chain_buffer_with_pqc(
             spdm_context->connection_info.algorithm.base_hash_algo,
             spdm_context->connection_info.algorithm.base_asym_algo,
+            spdm_context->connection_info.algorithm.pqc_asym_algo,
             cert_chain_buffer, cert_chain_buffer_size,
-            false, is_device_cert_model);
+            false, cert_model);
     } else {
-        result = libspdm_verify_certificate_chain_buffer(
+        result = libspdm_verify_certificate_chain_buffer_with_pqc(
             spdm_context->connection_info.algorithm.base_hash_algo,
             spdm_context->connection_info.algorithm.req_base_asym_alg,
+            spdm_context->connection_info.algorithm.req_pqc_asym_alg,
             cert_chain_buffer, cert_chain_buffer_size,
-            true, is_device_cert_model);
+            true, cert_model);
     }
 
     return result;
@@ -942,6 +925,7 @@ bool libspdm_verify_peer_cert_chain_buffer_authority(libspdm_context_t *spdm_con
  **/
 bool libspdm_generate_challenge_auth_signature(libspdm_context_t *spdm_context,
                                                bool is_requester,
+                                               uint8_t slot_id,
                                                uint8_t *signature)
 {
     bool result;
@@ -976,24 +960,31 @@ bool libspdm_generate_challenge_auth_signature(libspdm_context_t *spdm_context,
 
     if (is_requester) {
 #if LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP
-        signature_size = libspdm_get_req_asym_signature_size(
-            spdm_context->connection_info.algorithm.req_base_asym_alg);
+        if (spdm_context->connection_info.algorithm.req_pqc_asym_alg != 0) {
+            signature_size = libspdm_get_req_pqc_asym_signature_size(
+                spdm_context->connection_info.algorithm.req_pqc_asym_alg);
+        } else {
+            signature_size = libspdm_get_req_asym_signature_size(
+                spdm_context->connection_info.algorithm.req_base_asym_alg);
+        }
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
         result = libspdm_requester_data_sign(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
             spdm_context,
-#endif
-            spdm_context->connection_info.version, SPDM_CHALLENGE_AUTH,
+            spdm_context->connection_info.version,
+            libspdm_slot_id_to_key_pair_id(spdm_context, slot_id, true),
+            SPDM_CHALLENGE_AUTH,
             spdm_context->connection_info.algorithm.req_base_asym_alg,
+            spdm_context->connection_info.algorithm.req_pqc_asym_alg,
             spdm_context->connection_info.algorithm.base_hash_algo,
             false, m1m2_buffer, m1m2_buffer_size, signature, &signature_size);
 #else
         result = libspdm_requester_data_sign(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
             spdm_context,
-#endif
-            spdm_context->connection_info.version, SPDM_CHALLENGE_AUTH,
+            spdm_context->connection_info.version,
+            libspdm_slot_id_to_key_pair_id(spdm_context, slot_id, true),
+            SPDM_CHALLENGE_AUTH,
             spdm_context->connection_info.algorithm.req_base_asym_alg,
+            spdm_context->connection_info.algorithm.req_pqc_asym_alg,
             spdm_context->connection_info.algorithm.base_hash_algo,
             true, m1m2_hash, m1m2_hash_size, signature, &signature_size);
 #endif
@@ -1001,25 +992,32 @@ bool libspdm_generate_challenge_auth_signature(libspdm_context_t *spdm_context,
         result = false;
 #endif /* LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP */
     } else {
-        signature_size = libspdm_get_asym_signature_size(
-            spdm_context->connection_info.algorithm.base_asym_algo);
+        if (spdm_context->connection_info.algorithm.pqc_asym_algo != 0) {
+            signature_size = libspdm_get_pqc_asym_signature_size(
+                spdm_context->connection_info.algorithm.pqc_asym_algo);
+        } else {
+            signature_size = libspdm_get_asym_signature_size(
+                spdm_context->connection_info.algorithm.base_asym_algo);
+        }
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
         result = libspdm_responder_data_sign(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
             spdm_context,
-#endif
-            spdm_context->connection_info.version, SPDM_CHALLENGE_AUTH,
+            spdm_context->connection_info.version,
+            libspdm_slot_id_to_key_pair_id(spdm_context, slot_id, false),
+            SPDM_CHALLENGE_AUTH,
             spdm_context->connection_info.algorithm.base_asym_algo,
+            spdm_context->connection_info.algorithm.pqc_asym_algo,
             spdm_context->connection_info.algorithm.base_hash_algo,
             false, m1m2_buffer, m1m2_buffer_size, signature,
             &signature_size);
 #else
         result = libspdm_responder_data_sign(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
             spdm_context,
-#endif
-            spdm_context->connection_info.version, SPDM_CHALLENGE_AUTH,
+            spdm_context->connection_info.version,
+            libspdm_slot_id_to_key_pair_id(spdm_context, slot_id, false),
+            SPDM_CHALLENGE_AUTH,
             spdm_context->connection_info.algorithm.base_asym_algo,
+            spdm_context->connection_info.algorithm.pqc_asym_algo,
             spdm_context->connection_info.algorithm.base_hash_algo,
             true, m1m2_hash, m1m2_hash_size, signature,
             &signature_size);
@@ -1205,17 +1203,33 @@ bool libspdm_verify_challenge_auth_signature(libspdm_context_t *spdm_context,
 
     if (slot_id == 0xFF) {
         if (is_requester) {
-            result = libspdm_asym_get_public_key_from_der(
-                spdm_context->connection_info.algorithm.base_asym_algo,
-                spdm_context->local_context.peer_public_key_provision,
-                spdm_context->local_context.peer_public_key_provision_size,
-                &context);
+            if (spdm_context->connection_info.algorithm.pqc_asym_algo != 0) {
+                result = libspdm_pqc_asym_get_public_key_from_der(
+                    spdm_context->connection_info.algorithm.pqc_asym_algo,
+                    spdm_context->local_context.peer_public_key_provision,
+                    spdm_context->local_context.peer_public_key_provision_size,
+                    &context);
+            } else {
+                result = libspdm_asym_get_public_key_from_der(
+                    spdm_context->connection_info.algorithm.base_asym_algo,
+                    spdm_context->local_context.peer_public_key_provision,
+                    spdm_context->local_context.peer_public_key_provision_size,
+                    &context);
+            }
         } else {
-            result = libspdm_req_asym_get_public_key_from_der(
-                spdm_context->connection_info.algorithm.req_base_asym_alg,
-                spdm_context->local_context.peer_public_key_provision,
-                spdm_context->local_context.peer_public_key_provision_size,
-                &context);
+            if (spdm_context->connection_info.algorithm.req_pqc_asym_alg != 0) {
+                result = libspdm_req_pqc_asym_get_public_key_from_der(
+                    spdm_context->connection_info.algorithm.req_pqc_asym_alg,
+                    spdm_context->local_context.peer_public_key_provision,
+                    spdm_context->local_context.peer_public_key_provision_size,
+                    &context);
+            } else {
+                result = libspdm_req_asym_get_public_key_from_der(
+                    spdm_context->connection_info.algorithm.req_base_asym_alg,
+                    spdm_context->local_context.peer_public_key_provision,
+                    spdm_context->local_context.peer_public_key_provision_size,
+                    &context);
+            }
         }
         if (!result) {
             return false;
@@ -1236,13 +1250,25 @@ bool libspdm_verify_challenge_auth_signature(libspdm_context_t *spdm_context,
         }
 
         if (is_requester) {
-            result = libspdm_asym_get_public_key_from_x509(
-                spdm_context->connection_info.algorithm.base_asym_algo,
-                cert_buffer, cert_buffer_size, &context);
+            if (spdm_context->connection_info.algorithm.pqc_asym_algo != 0) {
+                result = libspdm_pqc_asym_get_public_key_from_x509(
+                    spdm_context->connection_info.algorithm.pqc_asym_algo,
+                    cert_buffer, cert_buffer_size, &context);
+            } else {
+                result = libspdm_asym_get_public_key_from_x509(
+                    spdm_context->connection_info.algorithm.base_asym_algo,
+                    cert_buffer, cert_buffer_size, &context);
+            }
         } else {
-            result = libspdm_req_asym_get_public_key_from_x509(
-                spdm_context->connection_info.algorithm.req_base_asym_alg,
-                cert_buffer, cert_buffer_size, &context);
+            if (spdm_context->connection_info.algorithm.req_pqc_asym_alg != 0) {
+                result = libspdm_req_pqc_asym_get_public_key_from_x509(
+                    spdm_context->connection_info.algorithm.req_pqc_asym_alg,
+                    cert_buffer, cert_buffer_size, &context);
+            } else {
+                result = libspdm_req_asym_get_public_key_from_x509(
+                    spdm_context->connection_info.algorithm.req_base_asym_alg,
+                    cert_buffer, cert_buffer_size, &context);
+            }
         }
         if (!result) {
             return false;
@@ -1255,46 +1281,90 @@ bool libspdm_verify_challenge_auth_signature(libspdm_context_t *spdm_context,
 
     if (is_requester) {
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
-        result = libspdm_asym_verify_ex(
-            spdm_context->connection_info.version, SPDM_CHALLENGE_AUTH,
-            spdm_context->connection_info.algorithm.base_asym_algo,
-            spdm_context->connection_info.algorithm.base_hash_algo,
-            context, m1m2_buffer, m1m2_buffer_size, sign_data, sign_data_size,
-            &spdm_context->spdm_10_11_verify_signature_endian);
-        libspdm_asym_free(
-            spdm_context->connection_info.algorithm.base_asym_algo, context);
-#else
-        result = libspdm_asym_verify_hash_ex(
-            spdm_context->connection_info.version, SPDM_CHALLENGE_AUTH,
-            spdm_context->connection_info.algorithm.base_asym_algo,
-            spdm_context->connection_info.algorithm.base_hash_algo,
-            context, m1m2_hash, m1m2_hash_size, sign_data, sign_data_size,
-            &spdm_context->spdm_10_11_verify_signature_endian);
-        if (slot_id == 0xFF) {
+        if (spdm_context->connection_info.algorithm.pqc_asym_algo != 0) {
+            result = libspdm_pqc_asym_verify(
+                spdm_context->connection_info.version, SPDM_CHALLENGE_AUTH,
+                spdm_context->connection_info.algorithm.pqc_asym_algo,
+                spdm_context->connection_info.algorithm.base_hash_algo,
+                context, m1m2_buffer, m1m2_buffer_size, sign_data, sign_data_size);
+            libspdm_pqc_asym_free(
+                spdm_context->connection_info.algorithm.pqc_asym_algo, context);
+        } else {
+            result = libspdm_asym_verify_ex(
+                spdm_context->connection_info.version, SPDM_CHALLENGE_AUTH,
+                spdm_context->connection_info.algorithm.base_asym_algo,
+                spdm_context->connection_info.algorithm.base_hash_algo,
+                context, m1m2_buffer, m1m2_buffer_size, sign_data, sign_data_size,
+                &spdm_context->spdm_10_11_verify_signature_endian);
             libspdm_asym_free(
                 spdm_context->connection_info.algorithm.base_asym_algo, context);
+        }
+#else
+        if (spdm_context->connection_info.algorithm.pqc_asym_algo != 0) {
+            result = libspdm_pqc_asym_verify_hash(
+                spdm_context->connection_info.version, SPDM_CHALLENGE_AUTH,
+                spdm_context->connection_info.algorithm.pqc_asym_algo,
+                spdm_context->connection_info.algorithm.base_hash_algo,
+                context, m1m2_hash, m1m2_hash_size, sign_data, sign_data_size);
+            if (slot_id == 0xFF) {
+                libspdm_pqc_asym_free(
+                    spdm_context->connection_info.algorithm.pqc_asym_algo, context);
+            }
+        } else {
+            result = libspdm_asym_verify_hash_ex(
+                spdm_context->connection_info.version, SPDM_CHALLENGE_AUTH,
+                spdm_context->connection_info.algorithm.base_asym_algo,
+                spdm_context->connection_info.algorithm.base_hash_algo,
+                context, m1m2_hash, m1m2_hash_size, sign_data, sign_data_size,
+                &spdm_context->spdm_10_11_verify_signature_endian);
+            if (slot_id == 0xFF) {
+                libspdm_asym_free(
+                    spdm_context->connection_info.algorithm.base_asym_algo, context);
+            }
         }
 #endif
     } else {
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
-        result = libspdm_req_asym_verify_ex(
-            spdm_context->connection_info.version, SPDM_CHALLENGE_AUTH,
-            spdm_context->connection_info.algorithm.req_base_asym_alg,
-            spdm_context->connection_info.algorithm.base_hash_algo,
-            context, m1m2_buffer, m1m2_buffer_size, sign_data, sign_data_size,
-            &spdm_context->spdm_10_11_verify_signature_endian);
-        libspdm_req_asym_free(
-            spdm_context->connection_info.algorithm.req_base_asym_alg, context);
-#else
-        result = libspdm_req_asym_verify_hash_ex(
-            spdm_context->connection_info.version, SPDM_CHALLENGE_AUTH,
-            spdm_context->connection_info.algorithm.req_base_asym_alg,
-            spdm_context->connection_info.algorithm.base_hash_algo,
-            context, m1m2_hash, m1m2_hash_size, sign_data, sign_data_size,
-            &spdm_context->spdm_10_11_verify_signature_endian);
-        if (slot_id == 0xFF) {
+        if (spdm_context->connection_info.algorithm.req_pqc_asym_alg != 0) {
+            result = libspdm_req_pqc_asym_verify(
+                spdm_context->connection_info.version, SPDM_CHALLENGE_AUTH,
+                spdm_context->connection_info.algorithm.req_pqc_asym_alg,
+                spdm_context->connection_info.algorithm.base_hash_algo,
+                context, m1m2_buffer, m1m2_buffer_size, sign_data, sign_data_size);
+            libspdm_req_pqc_asym_free(
+                spdm_context->connection_info.algorithm.req_pqc_asym_alg, context);
+        } else {
+            result = libspdm_req_asym_verify_ex(
+                spdm_context->connection_info.version, SPDM_CHALLENGE_AUTH,
+                spdm_context->connection_info.algorithm.req_base_asym_alg,
+                spdm_context->connection_info.algorithm.base_hash_algo,
+                context, m1m2_buffer, m1m2_buffer_size, sign_data, sign_data_size,
+                &spdm_context->spdm_10_11_verify_signature_endian);
             libspdm_req_asym_free(
                 spdm_context->connection_info.algorithm.req_base_asym_alg, context);
+        }
+#else
+        if (spdm_context->connection_info.algorithm.req_pqc_asym_alg != 0) {
+            result = libspdm_req_pqc_asym_verify_hash(
+                spdm_context->connection_info.version, SPDM_CHALLENGE_AUTH,
+                spdm_context->connection_info.algorithm.req_pqc_asym_alg,
+                spdm_context->connection_info.algorithm.base_hash_algo,
+                context, m1m2_hash, m1m2_hash_size, sign_data, sign_data_size);
+            if (slot_id == 0xFF) {
+                libspdm_req_pqc_asym_free(
+                    spdm_context->connection_info.algorithm.req_pqc_asym_alg, context);
+            }
+        } else {
+            result = libspdm_req_asym_verify_hash_ex(
+                spdm_context->connection_info.version, SPDM_CHALLENGE_AUTH,
+                spdm_context->connection_info.algorithm.req_base_asym_alg,
+                spdm_context->connection_info.algorithm.base_hash_algo,
+                context, m1m2_hash, m1m2_hash_size, sign_data, sign_data_size,
+                &spdm_context->spdm_10_11_verify_signature_endian);
+            if (slot_id == 0xFF) {
+                libspdm_req_asym_free(
+                    spdm_context->connection_info.algorithm.req_base_asym_alg, context);
+            }
         }
 #endif
     }
@@ -1345,6 +1415,7 @@ libspdm_get_measurement_summary_hash_size(libspdm_context_t *spdm_context,
     }
 }
 
+#if LIBSPDM_ENABLE_CAPABILITY_ENDPOINT_INFO_CAP
 /**
  * This function generates the endpoint info signature based upon il1il2 for authentication.
  *
@@ -1359,6 +1430,7 @@ libspdm_get_measurement_summary_hash_size(libspdm_context_t *spdm_context,
 bool libspdm_generate_endpoint_info_signature(libspdm_context_t *spdm_context,
                                               libspdm_session_info_t *session_info,
                                               bool is_requester,
+                                              uint8_t slot_id,
                                               uint8_t *signature)
 {
     bool result;
@@ -1391,51 +1463,61 @@ bool libspdm_generate_endpoint_info_signature(libspdm_context_t *spdm_context,
     }
 
     if (is_requester) {
-#if LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP
-        signature_size = libspdm_get_req_asym_signature_size(
-            spdm_context->connection_info.algorithm.req_base_asym_alg);
+        if (spdm_context->connection_info.algorithm.req_pqc_asym_alg != 0) {
+            signature_size = libspdm_get_req_pqc_asym_signature_size(
+                spdm_context->connection_info.algorithm.req_pqc_asym_alg);
+        } else {
+            signature_size = libspdm_get_req_asym_signature_size(
+                spdm_context->connection_info.algorithm.req_base_asym_alg);
+        }
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
         result = libspdm_requester_data_sign(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
             spdm_context,
-#endif
-            spdm_context->connection_info.version, SPDM_ENDPOINT_INFO,
+            spdm_context->connection_info.version,
+            libspdm_slot_id_to_key_pair_id(spdm_context, slot_id, true),
+            SPDM_ENDPOINT_INFO,
             spdm_context->connection_info.algorithm.req_base_asym_alg,
+            spdm_context->connection_info.algorithm.req_pqc_asym_alg,
             spdm_context->connection_info.algorithm.base_hash_algo,
             false, il1il2_buffer, il1il2_buffer_size, signature, &signature_size);
 #else
         result = libspdm_requester_data_sign(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
             spdm_context,
-#endif
-            spdm_context->connection_info.version, SPDM_ENDPOINT_INFO,
+            spdm_context->connection_info.version,
+            libspdm_slot_id_to_key_pair_id(spdm_context, slot_id, true),
+            SPDM_ENDPOINT_INFO,
             spdm_context->connection_info.algorithm.req_base_asym_alg,
+            spdm_context->connection_info.algorithm.req_pqc_asym_alg,
             spdm_context->connection_info.algorithm.base_hash_algo,
             true, il1il2_hash, il1il2_hash_size, signature, &signature_size);
 #endif
-#else /* LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP */
-        result = false;
-#endif /* LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP */
     } else {
-        signature_size = libspdm_get_asym_signature_size(
-            spdm_context->connection_info.algorithm.base_asym_algo);
+        if (spdm_context->connection_info.algorithm.pqc_asym_algo != 0) {
+            signature_size = libspdm_get_pqc_asym_signature_size(
+                spdm_context->connection_info.algorithm.pqc_asym_algo);
+        } else {
+            signature_size = libspdm_get_asym_signature_size(
+                spdm_context->connection_info.algorithm.base_asym_algo);
+        }
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
         result = libspdm_responder_data_sign(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
             spdm_context,
-#endif
-            spdm_context->connection_info.version, SPDM_ENDPOINT_INFO,
+            spdm_context->connection_info.version,
+            libspdm_slot_id_to_key_pair_id(spdm_context, slot_id, false),
+            SPDM_ENDPOINT_INFO,
             spdm_context->connection_info.algorithm.base_asym_algo,
+            spdm_context->connection_info.algorithm.pqc_asym_algo,
             spdm_context->connection_info.algorithm.base_hash_algo,
             false, il1il2_buffer, il1il2_buffer_size, signature,
             &signature_size);
 #else
         result = libspdm_responder_data_sign(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
             spdm_context,
-#endif
-            spdm_context->connection_info.version, SPDM_ENDPOINT_INFO,
+            spdm_context->connection_info.version,
+            libspdm_slot_id_to_key_pair_id(spdm_context, slot_id, false),
+            SPDM_ENDPOINT_INFO,
             spdm_context->connection_info.algorithm.base_asym_algo,
+            spdm_context->connection_info.algorithm.pqc_asym_algo,
             spdm_context->connection_info.algorithm.base_hash_algo,
             true, il1il2_hash, il1il2_hash_size, signature,
             &signature_size);
@@ -1444,6 +1526,7 @@ bool libspdm_generate_endpoint_info_signature(libspdm_context_t *spdm_context,
 
     return result;
 }
+#endif /* LIBSPDM_ENABLE_CAPABILITY_ENDPOINT_INFO_CAP */
 
 /**
  * This function verifies the endpoint info signature based upon il1il2.
@@ -1502,17 +1585,35 @@ bool libspdm_verify_endpoint_info_signature(libspdm_context_t *spdm_context,
 
     if (slot_id == 0xF) {
         if (is_requester) {
-            result = libspdm_asym_get_public_key_from_der(
-                spdm_context->connection_info.algorithm.base_asym_algo,
-                spdm_context->local_context.peer_public_key_provision,
-                spdm_context->local_context.peer_public_key_provision_size,
-                &context);
+            if (spdm_context->connection_info.algorithm.base_asym_algo != 0) {
+                result = libspdm_asym_get_public_key_from_der(
+                    spdm_context->connection_info.algorithm.base_asym_algo,
+                    spdm_context->local_context.peer_public_key_provision,
+                    spdm_context->local_context.peer_public_key_provision_size,
+                    &context);
+            }
+            if (spdm_context->connection_info.algorithm.pqc_asym_algo != 0) {
+                result = libspdm_pqc_asym_get_public_key_from_der(
+                    spdm_context->connection_info.algorithm.pqc_asym_algo,
+                    spdm_context->local_context.peer_public_key_provision,
+                    spdm_context->local_context.peer_public_key_provision_size,
+                    &context);
+            }
         } else {
-            result = libspdm_req_asym_get_public_key_from_der(
-                spdm_context->connection_info.algorithm.req_base_asym_alg,
-                spdm_context->local_context.peer_public_key_provision,
-                spdm_context->local_context.peer_public_key_provision_size,
-                &context);
+            if (spdm_context->connection_info.algorithm.req_base_asym_alg != 0) {
+                result = libspdm_req_asym_get_public_key_from_der(
+                    spdm_context->connection_info.algorithm.req_base_asym_alg,
+                    spdm_context->local_context.peer_public_key_provision,
+                    spdm_context->local_context.peer_public_key_provision_size,
+                    &context);
+            }
+            if (spdm_context->connection_info.algorithm.req_pqc_asym_alg != 0) {
+                result = libspdm_req_pqc_asym_get_public_key_from_der(
+                    spdm_context->connection_info.algorithm.req_pqc_asym_alg,
+                    spdm_context->local_context.peer_public_key_provision,
+                    spdm_context->local_context.peer_public_key_provision_size,
+                    &context);
+            }
         }
         if (!result) {
             return false;
@@ -1552,49 +1653,95 @@ bool libspdm_verify_endpoint_info_signature(libspdm_context_t *spdm_context,
     }
 
     if (is_requester) {
+        if (spdm_context->connection_info.algorithm.base_asym_algo != 0) {
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
-        result = libspdm_asym_verify_ex(
-            spdm_context->connection_info.version, SPDM_ENDPOINT_INFO,
-            spdm_context->connection_info.algorithm.base_asym_algo,
-            spdm_context->connection_info.algorithm.base_hash_algo,
-            context, il1il2_buffer, il1il2_buffer_size, sign_data, sign_data_size,
-            &spdm_context->spdm_10_11_verify_signature_endian);
-        libspdm_asym_free(
-            spdm_context->connection_info.algorithm.base_asym_algo, context);
-#else
-        result = libspdm_asym_verify_hash_ex(
-            spdm_context->connection_info.version, SPDM_ENDPOINT_INFO,
-            spdm_context->connection_info.algorithm.base_asym_algo,
-            spdm_context->connection_info.algorithm.base_hash_algo,
-            context, il1il2_hash, il1il2_hash_size, sign_data, sign_data_size,
-            &spdm_context->spdm_10_11_verify_signature_endian);
-        if (slot_id == 0xF) {
+            result = libspdm_asym_verify_ex(
+                spdm_context->connection_info.version, SPDM_ENDPOINT_INFO,
+                spdm_context->connection_info.algorithm.base_asym_algo,
+                spdm_context->connection_info.algorithm.base_hash_algo,
+                context, il1il2_buffer, il1il2_buffer_size, sign_data, sign_data_size,
+                &spdm_context->spdm_10_11_verify_signature_endian);
             libspdm_asym_free(
                 spdm_context->connection_info.algorithm.base_asym_algo, context);
-        }
-#endif
-    } else {
-#if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
-        result = libspdm_req_asym_verify_ex(
-            spdm_context->connection_info.version, SPDM_ENDPOINT_INFO,
-            spdm_context->connection_info.algorithm.req_base_asym_alg,
-            spdm_context->connection_info.algorithm.base_hash_algo,
-            context, il1il2_buffer, il1il2_buffer_size, sign_data, sign_data_size,
-            &spdm_context->spdm_10_11_verify_signature_endian);
-        libspdm_req_asym_free(
-            spdm_context->connection_info.algorithm.req_base_asym_alg, context);
 #else
-        result = libspdm_req_asym_verify_hash_ex(
-            spdm_context->connection_info.version, SPDM_ENDPOINT_INFO,
-            spdm_context->connection_info.algorithm.req_base_asym_alg,
-            spdm_context->connection_info.algorithm.base_hash_algo,
-            context, il1il2_hash, il1il2_hash_size, sign_data, sign_data_size,
-            &spdm_context->spdm_10_11_verify_signature_endian);
-        if (slot_id == 0xF) {
+            result = libspdm_asym_verify_hash_ex(
+                spdm_context->connection_info.version, SPDM_ENDPOINT_INFO,
+                spdm_context->connection_info.algorithm.base_asym_algo,
+                spdm_context->connection_info.algorithm.base_hash_algo,
+                context, il1il2_hash, il1il2_hash_size, sign_data, sign_data_size,
+                &spdm_context->spdm_10_11_verify_signature_endian);
+            if (slot_id == 0xF) {
+                libspdm_asym_free(
+                    spdm_context->connection_info.algorithm.base_asym_algo, context);
+            }
+#endif
+        }
+        if (spdm_context->connection_info.algorithm.pqc_asym_algo != 0) {
+#if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
+            result = libspdm_pqc_asym_verify(
+                spdm_context->connection_info.version, SPDM_ENDPOINT_INFO,
+                spdm_context->connection_info.algorithm.pqc_asym_algo,
+                spdm_context->connection_info.algorithm.base_hash_algo,
+                context, il1il2_buffer, il1il2_buffer_size, sign_data, sign_data_size);
+            libspdm_pqc_asym_free(
+                spdm_context->connection_info.algorithm.pqc_asym_algo, context);
+#else
+            result = libspdm_pqc_asym_verify_hash(
+                spdm_context->connection_info.version, SPDM_ENDPOINT_INFO,
+                spdm_context->connection_info.algorithm.pqc_asym_algo,
+                spdm_context->connection_info.algorithm.base_hash_algo,
+                context, il1il2_hash, il1il2_hash_size, sign_data, sign_data_size);
+            if (slot_id == 0xFF) {
+                libspdm_pqc_asym_free(
+                    spdm_context->connection_info.algorithm.pqc_asym_algo, context);
+            }
+#endif
+        }
+    } else {
+        if (spdm_context->connection_info.algorithm.req_base_asym_alg != 0) {
+#if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
+            result = libspdm_req_asym_verify_ex(
+                spdm_context->connection_info.version, SPDM_ENDPOINT_INFO,
+                spdm_context->connection_info.algorithm.req_base_asym_alg,
+                spdm_context->connection_info.algorithm.base_hash_algo,
+                context, il1il2_buffer, il1il2_buffer_size, sign_data, sign_data_size,
+                &spdm_context->spdm_10_11_verify_signature_endian);
             libspdm_req_asym_free(
                 spdm_context->connection_info.algorithm.req_base_asym_alg, context);
-        }
+#else
+            result = libspdm_req_asym_verify_hash_ex(
+                spdm_context->connection_info.version, SPDM_ENDPOINT_INFO,
+                spdm_context->connection_info.algorithm.req_base_asym_alg,
+                spdm_context->connection_info.algorithm.base_hash_algo,
+                context, il1il2_hash, il1il2_hash_size, sign_data, sign_data_size,
+                &spdm_context->spdm_10_11_verify_signature_endian);
+            if (slot_id == 0xF) {
+                libspdm_req_asym_free(
+                    spdm_context->connection_info.algorithm.req_base_asym_alg, context);
+            }
 #endif
+        }
+        if (spdm_context->connection_info.algorithm.req_pqc_asym_alg != 0) {
+#if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
+            result = libspdm_req_pqc_asym_verify(
+                spdm_context->connection_info.version, SPDM_ENDPOINT_INFO,
+                spdm_context->connection_info.algorithm.req_pqc_asym_alg,
+                spdm_context->connection_info.algorithm.base_hash_algo,
+                context, il1il2_buffer, il1il2_buffer_size, sign_data, sign_data_size);
+            libspdm_req_pqc_asym_free(
+                spdm_context->connection_info.algorithm.req_pqc_asym_alg, context);
+#else
+            result = libspdm_req_pqc_asym_verify_hash(
+                spdm_context->connection_info.version, SPDM_ENDPOINT_INFO,
+                spdm_context->connection_info.algorithm.req_pqc_asym_alg,
+                spdm_context->connection_info.algorithm.base_hash_algo,
+                context, il1il2_hash, il1il2_hash_size, sign_data, sign_data_size);
+            if (slot_id == 0xFF) {
+                libspdm_req_pqc_asym_free(
+                    spdm_context->connection_info.algorithm.req_pqc_asym_alg, context);
+            }
+#endif
+        }
     }
     if (!result) {
         LIBSPDM_DEBUG((LIBSPDM_DEBUG_ERROR, "!!! verify_endpoint_info_signature - FAIL !!!\n"));

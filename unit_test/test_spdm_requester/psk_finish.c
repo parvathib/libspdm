@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2022 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -47,10 +47,8 @@ void libspdm_secured_message_set_response_handshake_salt(
                      salt, secured_message_context->aead_iv_size);
 }
 
-libspdm_return_t libspdm_requester_psk_finish_test_send_message(void *spdm_context,
-                                                                size_t request_size,
-                                                                const void *request,
-                                                                uint64_t timeout)
+static libspdm_return_t send_message(
+    void *spdm_context, size_t request_size, const void *request, uint64_t timeout)
 {
     libspdm_test_context_t *spdm_test_context;
 
@@ -86,7 +84,9 @@ libspdm_return_t libspdm_requester_psk_finish_test_send_message(void *spdm_conte
         return LIBSPDM_STATUS_SUCCESS;
     case 0xF:
         return LIBSPDM_STATUS_SUCCESS;
-    case 0x10: {
+    case 0x10:
+    case 0x11:
+    {
         libspdm_return_t status;
         uint8_t *decoded_message;
         size_t decoded_message_size;
@@ -130,9 +130,8 @@ libspdm_return_t libspdm_requester_psk_finish_test_send_message(void *spdm_conte
     }
 }
 
-libspdm_return_t libspdm_requester_psk_finish_test_receive_message(
-    void *spdm_context, size_t *response_size,
-    void **response, uint64_t timeout)
+static libspdm_return_t receive_message(
+    void *spdm_context, size_t *response_size, void **response, uint64_t timeout)
 {
     libspdm_test_context_t *spdm_test_context;
 
@@ -414,7 +413,7 @@ libspdm_return_t libspdm_requester_psk_finish_test_receive_message(
         spdm_response = (void *)((uint8_t *)*response + transport_header_size);
 
         session_id = 0xFFFFFFFF;
-        spdm_response->header.spdm_version = SPDM_MESSAGE_VERSION_11;
+        spdm_response->header.spdm_version = SPDM_MESSAGE_VERSION_10;
         spdm_response->header.request_response_code = SPDM_ERROR;
         spdm_response->header.param1 = SPDM_ERROR_CODE_REQUEST_RESYNCH;
         spdm_response->header.param2 = 0;
@@ -901,6 +900,58 @@ libspdm_return_t libspdm_requester_psk_finish_test_receive_message(
     }
         return LIBSPDM_STATUS_SUCCESS;
 
+    case 0x11: {
+        spdm_psk_finish_response_t *spdm_response;
+        size_t spdm_response_size;
+        size_t transport_header_size;
+        uint32_t session_id;
+        libspdm_session_info_t *session_info;
+        uint8_t *scratch_buffer;
+        size_t scratch_buffer_size;
+        uint16_t opaque_data_size;
+        uint8_t *ptr;
+
+        session_id = 0xFFFFFFFF;
+        opaque_data_size = 8;
+        spdm_response_size = sizeof(spdm_psk_finish_response_t) + sizeof(uint16_t) + opaque_data_size;
+        transport_header_size = LIBSPDM_TEST_TRANSPORT_HEADER_SIZE;
+        spdm_response = (void *)((uint8_t *)*response + transport_header_size);
+
+        spdm_response->header.spdm_version = SPDM_MESSAGE_VERSION_14;
+        spdm_response->header.request_response_code =
+            SPDM_PSK_FINISH_RSP;
+        spdm_response->header.param1 = 0;
+        spdm_response->header.param2 = 0;
+        ptr = (uint8_t *)spdm_response + sizeof(spdm_psk_finish_response_t);
+        libspdm_write_uint16(ptr, opaque_data_size);
+
+        /* For secure message, message is in sender buffer, we need copy it to scratch buffer.
+         * transport_message is always in sender buffer. */
+        libspdm_get_scratch_buffer (spdm_context, (void **)&scratch_buffer, &scratch_buffer_size);
+        libspdm_copy_mem (scratch_buffer + transport_header_size,
+                          scratch_buffer_size - transport_header_size,
+                          spdm_response, spdm_response_size);
+        spdm_response = (void *)(scratch_buffer + transport_header_size);
+
+        libspdm_copy_mem(&m_libspdm_local_buffer[m_libspdm_local_buffer_size],
+                         sizeof(m_libspdm_local_buffer) - m_libspdm_local_buffer_size,
+                         spdm_response, spdm_response_size);
+        m_libspdm_local_buffer_size += spdm_response_size;
+
+        libspdm_transport_test_encode_message(spdm_context, &session_id,
+                                              false, false, spdm_response_size,
+                                              spdm_response, response_size,
+                                              response);
+        session_info = libspdm_get_session_info_via_session_id(spdm_context, session_id);
+        if (session_info == NULL) {
+            return LIBSPDM_STATUS_RECEIVE_FAIL;
+        }
+        /* WALKAROUND: If just use single context to encode message and then decode message */
+        ((libspdm_secured_message_context_t*)(session_info->secured_message_context))
+        ->handshake_secret.response_handshake_sequence_number--;
+    }
+        return LIBSPDM_STATUS_SUCCESS;
+
     default:
         return LIBSPDM_STATUS_RECEIVE_FAIL;
     }
@@ -911,7 +962,7 @@ libspdm_return_t libspdm_requester_psk_finish_test_receive_message(
  * a device error.
  * Expected behavior: client returns a Status of RETURN_DEVICE_ERROR.
  **/
-void libspdm_test_requester_psk_finish_case1(void **state)
+static void req_psk_finish_case1(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -942,9 +993,11 @@ void libspdm_test_requester_psk_finish_case1(void **state)
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_ENCRYPT_CAP;
     spdm_context->local_context.capability.flags |=
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_MAC_CAP;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
     spdm_context->connection_info.algorithm.base_hash_algo =
         m_libspdm_use_hash_algo;
@@ -964,7 +1017,8 @@ void libspdm_test_requester_psk_finish_case1(void **state)
 
     session_id = 0xFFFFFFFF;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init(spdm_context, session_info, session_id, true);
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_session_info_set_psk_hint(session_info,
                                       LIBSPDM_TEST_PSK_HINT_STRING,
                                       sizeof(LIBSPDM_TEST_PSK_HINT_STRING));
@@ -980,10 +1034,10 @@ void libspdm_test_requester_psk_finish_case1(void **state)
 
 /**
  * Test 2: receiving a correct PSK_FINISH_RSP message.
- * Expected behavior: client returns a Status of RETURN_SUCCESS and
+ * Expected behavior: client returns a Status of LIBSPDM_STATUS_SUCCESS and
  * session is established.
  **/
-void libspdm_test_requester_psk_finish_case2(void **state)
+static void req_psk_finish_case2(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -1014,9 +1068,11 @@ void libspdm_test_requester_psk_finish_case2(void **state)
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_ENCRYPT_CAP;
     spdm_context->local_context.capability.flags |=
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_MAC_CAP;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
     spdm_context->connection_info.algorithm.base_hash_algo =
         m_libspdm_use_hash_algo;
@@ -1036,7 +1092,8 @@ void libspdm_test_requester_psk_finish_case2(void **state)
 
     session_id = 0xFFFFFFFF;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init(spdm_context, session_info, session_id, true);
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_session_info_set_psk_hint(session_info,
                                       LIBSPDM_TEST_PSK_HINT_STRING,
                                       sizeof(LIBSPDM_TEST_PSK_HINT_STRING));
@@ -1082,7 +1139,7 @@ void libspdm_test_requester_psk_finish_case2(void **state)
  * GET_CAPABILITIES and NEGOTIATE_ALGORITHMS had not been exchanged.
  * Expected behavior: client returns a Status of RETURN_UNSUPPORTED.
  **/
-void libspdm_test_requester_psk_finish_case3(void **state)
+static void req_psk_finish_case3(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -1113,9 +1170,11 @@ void libspdm_test_requester_psk_finish_case3(void **state)
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_ENCRYPT_CAP;
     spdm_context->local_context.capability.flags |=
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_MAC_CAP;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
     spdm_context->connection_info.algorithm.base_hash_algo =
         m_libspdm_use_hash_algo;
@@ -1135,7 +1194,8 @@ void libspdm_test_requester_psk_finish_case3(void **state)
 
     session_id = 0xFFFFFFFF;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init(spdm_context, session_info, session_id, true);
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_session_info_set_psk_hint(session_info,
                                       LIBSPDM_TEST_PSK_HINT_STRING,
                                       sizeof(LIBSPDM_TEST_PSK_HINT_STRING));
@@ -1177,7 +1237,7 @@ void libspdm_test_requester_psk_finish_case3(void **state)
  * indicating InvalidParameters.
  * Expected behavior: client returns a Status of RETURN_DEVICE_ERROR.
  **/
-void libspdm_test_requester_psk_finish_case4(void **state)
+static void req_psk_finish_case4(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -1208,9 +1268,11 @@ void libspdm_test_requester_psk_finish_case4(void **state)
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_ENCRYPT_CAP;
     spdm_context->local_context.capability.flags |=
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_MAC_CAP;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
     spdm_context->connection_info.algorithm.base_hash_algo =
         m_libspdm_use_hash_algo;
@@ -1230,7 +1292,8 @@ void libspdm_test_requester_psk_finish_case4(void **state)
 
     session_id = 0xFFFFFFFF;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init(spdm_context, session_info, session_id, true);
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_session_info_set_psk_hint(session_info,
                                       LIBSPDM_TEST_PSK_HINT_STRING,
                                       sizeof(LIBSPDM_TEST_PSK_HINT_STRING));
@@ -1273,7 +1336,7 @@ void libspdm_test_requester_psk_finish_case4(void **state)
  * indicating the Busy status of the responder.
  * Expected behavior: client returns a Status of RETURN_DEVICE_ERROR.
  **/
-void libspdm_test_requester_psk_finish_case5(void **state)
+static void req_psk_finish_case5(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -1304,9 +1367,11 @@ void libspdm_test_requester_psk_finish_case5(void **state)
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_ENCRYPT_CAP;
     spdm_context->local_context.capability.flags |=
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_MAC_CAP;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
     spdm_context->connection_info.algorithm.base_hash_algo =
         m_libspdm_use_hash_algo;
@@ -1326,7 +1391,8 @@ void libspdm_test_requester_psk_finish_case5(void **state)
 
     session_id = 0xFFFFFFFF;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init(spdm_context, session_info, session_id, true);
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_session_info_set_psk_hint(session_info,
                                       LIBSPDM_TEST_PSK_HINT_STRING,
                                       sizeof(LIBSPDM_TEST_PSK_HINT_STRING));
@@ -1367,10 +1433,10 @@ void libspdm_test_requester_psk_finish_case5(void **state)
  * Test 6: the requester is setup correctly, but, on the first try, receiving
  * a Busy ERROR message, and, on retry, receiving a correct PSK_FINISH_RSP
  * message.
- * Expected behavior: client returns a Status of RETURN_SUCCESS and session
+ * Expected behavior: client returns a Status of LIBSPDM_STATUS_SUCCESS and session
  * is established.
  **/
-void libspdm_test_requester_psk_finish_case6(void **state)
+static void req_psk_finish_case6(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -1402,9 +1468,11 @@ void libspdm_test_requester_psk_finish_case6(void **state)
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_ENCRYPT_CAP;
     spdm_context->local_context.capability.flags |=
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_MAC_CAP;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
     spdm_context->connection_info.algorithm.base_hash_algo =
         m_libspdm_use_hash_algo;
@@ -1424,7 +1492,8 @@ void libspdm_test_requester_psk_finish_case6(void **state)
 
     session_id = 0xFFFFFFFF;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init(spdm_context, session_info, session_id, true);
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_session_info_set_psk_hint(session_info,
                                       LIBSPDM_TEST_PSK_HINT_STRING,
                                       sizeof(LIBSPDM_TEST_PSK_HINT_STRING));
@@ -1471,7 +1540,7 @@ void libspdm_test_requester_psk_finish_case6(void **state)
  * Expected behavior: client returns a Status of RETURN_DEVICE_ERROR, and the
  * communication is reset to expect a new GET_VERSION message.
  **/
-void libspdm_test_requester_psk_finish_case7(void **state)
+static void req_psk_finish_case7(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -1502,9 +1571,11 @@ void libspdm_test_requester_psk_finish_case7(void **state)
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_ENCRYPT_CAP;
     spdm_context->local_context.capability.flags |=
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_MAC_CAP;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
     spdm_context->connection_info.algorithm.base_hash_algo =
         m_libspdm_use_hash_algo;
@@ -1524,7 +1595,8 @@ void libspdm_test_requester_psk_finish_case7(void **state)
 
     session_id = 0xFFFFFFFF;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init(spdm_context, session_info, session_id, true);
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_session_info_set_psk_hint(session_info,
                                       LIBSPDM_TEST_PSK_HINT_STRING,
                                       sizeof(LIBSPDM_TEST_PSK_HINT_STRING));
@@ -1568,7 +1640,7 @@ void libspdm_test_requester_psk_finish_case7(void **state)
  * indicating the ResponseNotReady status of the responder.
  * Expected behavior: client returns a Status of RETURN_DEVICE_ERROR.
  **/
-void libspdm_test_requester_psk_finish_case8(void **state)
+static void req_psk_finish_case8(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -1599,9 +1671,11 @@ void libspdm_test_requester_psk_finish_case8(void **state)
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_ENCRYPT_CAP;
     spdm_context->local_context.capability.flags |=
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_MAC_CAP;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
     spdm_context->connection_info.algorithm.base_hash_algo =
         m_libspdm_use_hash_algo;
@@ -1621,7 +1695,8 @@ void libspdm_test_requester_psk_finish_case8(void **state)
 
     session_id = 0xFFFFFFFF;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init(spdm_context, session_info, session_id, true);
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_session_info_set_psk_hint(session_info,
                                       LIBSPDM_TEST_PSK_HINT_STRING,
                                       sizeof(LIBSPDM_TEST_PSK_HINT_STRING));
@@ -1662,10 +1737,10 @@ void libspdm_test_requester_psk_finish_case8(void **state)
  * Test 9: the requester is setup correctly, but, on the first try, receiving
  * a ResponseNotReady ERROR message, and, on retry, receiving a correct
  * PSK_FINISH_RSP message.
- * Expected behavior: client returns a Status of RETURN_SUCCESS and session
+ * Expected behavior: client returns a Status of LIBSPDM_STATUS_SUCCESS and session
  * is established.
  **/
-void libspdm_test_requester_psk_finish_case9(void **state)
+static void req_psk_finish_case9(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -1696,9 +1771,11 @@ void libspdm_test_requester_psk_finish_case9(void **state)
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_ENCRYPT_CAP;
     spdm_context->local_context.capability.flags |=
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_MAC_CAP;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
     spdm_context->connection_info.algorithm.base_hash_algo =
         m_libspdm_use_hash_algo;
@@ -1718,7 +1795,8 @@ void libspdm_test_requester_psk_finish_case9(void **state)
 
     session_id = 0xFFFFFFFF;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init(spdm_context, session_info, session_id, true);
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_session_info_set_psk_hint(session_info,
                                       LIBSPDM_TEST_PSK_HINT_STRING,
                                       sizeof(LIBSPDM_TEST_PSK_HINT_STRING));
@@ -1772,7 +1850,7 @@ void libspdm_test_requester_psk_finish_case9(void **state)
  * Busy (0x03), ResponseNotReady (0x42), and RequestResync (0x43).
  * Expected behavior: client returns a status of RETURN_DEVICE_ERROR.
  **/
-void libspdm_test_requester_psk_finish_case10(void **state) {
+static void req_psk_finish_case10(void **state) {
     libspdm_return_t status;
     libspdm_test_context_t    *spdm_test_context;
     libspdm_context_t  *spdm_context;
@@ -1819,7 +1897,8 @@ void libspdm_test_requester_psk_finish_case10(void **state) {
 
         session_id = 0xFFFFFFFF;
         session_info = &spdm_context->session_info[0];
-        libspdm_session_info_init (spdm_context, session_info, session_id, true);
+        libspdm_session_info_init (spdm_context, session_info, session_id,
+                                   SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
         libspdm_session_info_set_psk_hint(session_info,
                                           LIBSPDM_TEST_PSK_HINT_STRING,
                                           sizeof(LIBSPDM_TEST_PSK_HINT_STRING));
@@ -1866,7 +1945,7 @@ void libspdm_test_requester_psk_finish_case10(void **state) {
     free(data);
 }
 
-void libspdm_test_requester_psk_finish_case11(void **state)
+static void req_psk_finish_case11(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -1897,9 +1976,11 @@ void libspdm_test_requester_psk_finish_case11(void **state)
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_ENCRYPT_CAP;
     spdm_context->local_context.capability.flags |=
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_MAC_CAP;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
 
     spdm_context->connection_info.algorithm.base_hash_algo =
@@ -1920,7 +2001,8 @@ void libspdm_test_requester_psk_finish_case11(void **state)
 
     session_id = 0xFFFFFFFF;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init(spdm_context, session_info, session_id, true);
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_session_info_set_psk_hint(session_info,
                                       LIBSPDM_TEST_PSK_HINT_STRING,
                                       sizeof(LIBSPDM_TEST_PSK_HINT_STRING));
@@ -1987,7 +2069,7 @@ void libspdm_test_requester_psk_finish_case11(void **state)
  * PSK_FINISH_RSP message.
  * Expected behavior: client returns a Status of RETURN_UNSUPPORTED.
  **/
-void libspdm_test_requester_psk_finish_case12(void **state)
+static void req_psk_finish_case12(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -2019,9 +2101,11 @@ void libspdm_test_requester_psk_finish_case12(void **state)
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_ENCRYPT_CAP;
     spdm_context->local_context.capability.flags |=
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_MAC_CAP;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     spdm_context->transcript.message_a.buffer_size = 0;
     spdm_context->connection_info.algorithm.base_hash_algo =
         m_libspdm_use_hash_algo;
@@ -2041,7 +2125,8 @@ void libspdm_test_requester_psk_finish_case12(void **state)
 
     session_id = 0xFFFFFFFF;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init(spdm_context, session_info, session_id, true);
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_session_info_set_psk_hint(session_info,
                                       LIBSPDM_TEST_PSK_HINT_STRING,
                                       sizeof(LIBSPDM_TEST_PSK_HINT_STRING));
@@ -2083,7 +2168,7 @@ void libspdm_test_requester_psk_finish_case12(void **state)
  * code, but all other field correct.
  * Expected behavior: client returns a Status of RETURN_DEVICE_ERROR.
  **/
-void libspdm_test_requester_psk_finish_case13(void **state)
+static void req_psk_finish_case13(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -2115,9 +2200,11 @@ void libspdm_test_requester_psk_finish_case13(void **state)
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_ENCRYPT_CAP;
     spdm_context->local_context.capability.flags |=
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_MAC_CAP;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     spdm_context->transcript.message_a.buffer_size = 0;
     spdm_context->connection_info.algorithm.base_hash_algo =
         m_libspdm_use_hash_algo;
@@ -2137,7 +2224,8 @@ void libspdm_test_requester_psk_finish_case13(void **state)
 
     session_id = 0xFFFFFFFF;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init(spdm_context, session_info, session_id, true);
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_session_info_set_psk_hint(session_info,
                                       LIBSPDM_TEST_PSK_HINT_STRING,
                                       sizeof(LIBSPDM_TEST_PSK_HINT_STRING));
@@ -2180,7 +2268,7 @@ void libspdm_test_requester_psk_finish_case13(void **state)
  * return a correct PSK_FINISH_RSP message.
  * Expected behavior: client returns a Status of RETURN_UNSUPPORTED.
  **/
-void libspdm_test_requester_psk_finish_case14(void **state)
+static void req_psk_finish_case14(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -2212,9 +2300,11 @@ void libspdm_test_requester_psk_finish_case14(void **state)
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_ENCRYPT_CAP;
     spdm_context->local_context.capability.flags |=
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_MAC_CAP;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     spdm_context->transcript.message_a.buffer_size = 0;
     spdm_context->connection_info.algorithm.base_hash_algo =
         m_libspdm_use_hash_algo;
@@ -2234,7 +2324,8 @@ void libspdm_test_requester_psk_finish_case14(void **state)
 
     session_id = 0xFFFFFFFF;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init(spdm_context, session_info, session_id, true);
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_session_info_set_psk_hint(session_info,
                                       LIBSPDM_TEST_PSK_HINT_STRING,
                                       sizeof(LIBSPDM_TEST_PSK_HINT_STRING));
@@ -2275,7 +2366,7 @@ void libspdm_test_requester_psk_finish_case14(void **state)
  * Test 15 the requester is setup correctly, but receives an ERROR with SPDM_ERROR_CODE_DECRYPT_ERROR.
  * Expected behavior: client returns a Status of INVALID_SESSION_ID  and free the session ID.
  **/
-void libspdm_test_requester_psk_finish_case15(void **state)
+static void req_psk_finish_case15(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -2306,9 +2397,11 @@ void libspdm_test_requester_psk_finish_case15(void **state)
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_ENCRYPT_CAP;
     spdm_context->local_context.capability.flags |=
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_MAC_CAP;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
     spdm_context->connection_info.algorithm.base_hash_algo =
         m_libspdm_use_hash_algo;
@@ -2328,7 +2421,8 @@ void libspdm_test_requester_psk_finish_case15(void **state)
 
     session_id = 0xFFFFFFFF;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init(spdm_context, session_info, session_id, true);
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_session_info_set_psk_hint(session_info,
                                       LIBSPDM_TEST_PSK_HINT_STRING,
                                       sizeof(LIBSPDM_TEST_PSK_HINT_STRING));
@@ -2368,10 +2462,10 @@ void libspdm_test_requester_psk_finish_case15(void **state)
 
 /**
  * Test 16: a request message is successfully sent and a response message is successfully received.
- * Expected Behavior: requester returns the status RETURN_SUCCESS and a PSK_FINISH_RSP message is
+ * Expected Behavior: requester returns the status LIBSPDM_STATUS_SUCCESS and a PSK_FINISH_RSP message is
  * received, buffer F appends the exchanged PSK_FINISH and PSK_FINISH_RSP messages.
  **/
-void libspdm_test_requester_psk_finish_case16(void **state)
+static void req_psk_finish_case16(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -2402,9 +2496,11 @@ void libspdm_test_requester_psk_finish_case16(void **state)
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_ENCRYPT_CAP;
     spdm_context->local_context.capability.flags |=
         SPDM_GET_CAPABILITIES_REQUEST_FLAGS_MAC_CAP;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
     spdm_context->connection_info.algorithm.base_hash_algo = m_libspdm_use_hash_algo;
     spdm_context->connection_info.algorithm.base_asym_algo = m_libspdm_use_asym_algo;
@@ -2421,7 +2517,8 @@ void libspdm_test_requester_psk_finish_case16(void **state)
 
     session_id = 0xFFFFFFFF;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init(spdm_context, session_info, session_id, true);
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_session_info_set_psk_hint(session_info,
                                       LIBSPDM_TEST_PSK_HINT_STRING,
                                       sizeof(LIBSPDM_TEST_PSK_HINT_STRING));
@@ -2467,53 +2564,142 @@ void libspdm_test_requester_psk_finish_case16(void **state)
     free(data);
 }
 
-int libspdm_requester_psk_finish_test_main(void)
+/**
+ * Test 17: SPDM version 1.4, with OpaqueData
+ * Expected Behavior: requester returns the status LIBSPDM_STATUS_SUCCESS and a PSK_FINISH_RSP message is
+ * received.
+ **/
+static void req_psk_finish_case17(void **state)
 {
-    const struct CMUnitTest spdm_requester_psk_finish_tests[] = {
+    libspdm_return_t status;
+    libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    uint32_t session_id;
+    void *data;
+    size_t data_size;
+    void *hash;
+    size_t hash_size;
+    libspdm_session_info_t *session_info;
+
+    spdm_test_context = *state;
+    spdm_context = spdm_test_context->spdm_context;
+    spdm_test_context->case_id = 0x11;
+    spdm_context->connection_info.version = SPDM_MESSAGE_VERSION_14 <<
+                                            SPDM_VERSION_NUMBER_SHIFT_BIT;
+    spdm_context->connection_info.connection_state =
+        LIBSPDM_CONNECTION_STATE_NEGOTIATED;
+    spdm_context->connection_info.capability.flags |=
+        SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_PSK_CAP;
+    spdm_context->connection_info.capability.flags |=
+        SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_ENCRYPT_CAP;
+    spdm_context->connection_info.capability.flags |=
+        SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_MAC_CAP;
+    spdm_context->local_context.capability.flags |=
+        SPDM_GET_CAPABILITIES_REQUEST_FLAGS_PSK_CAP;
+    spdm_context->local_context.capability.flags |=
+        SPDM_GET_CAPABILITIES_REQUEST_FLAGS_ENCRYPT_CAP;
+    spdm_context->local_context.capability.flags |=
+        SPDM_GET_CAPABILITIES_REQUEST_FLAGS_MAC_CAP;
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
+    libspdm_reset_message_a(spdm_context);
+    spdm_context->connection_info.algorithm.base_hash_algo = m_libspdm_use_hash_algo;
+    spdm_context->connection_info.algorithm.base_asym_algo = m_libspdm_use_asym_algo;
+    spdm_context->connection_info.algorithm.dhe_named_group = m_libspdm_use_dhe_algo;
+    spdm_context->connection_info.algorithm.aead_cipher_suite = m_libspdm_use_aead_algo;
+
+    session_id = 0xFFFFFFFF;
+    session_info = &spdm_context->session_info[0];
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
+    libspdm_session_info_set_psk_hint(session_info,
+                                      LIBSPDM_TEST_PSK_HINT_STRING,
+                                      sizeof(LIBSPDM_TEST_PSK_HINT_STRING));
+    libspdm_secured_message_set_session_state(
+        session_info->secured_message_context,
+        LIBSPDM_SESSION_STATE_HANDSHAKING);
+    libspdm_set_mem(m_libspdm_dummy_key_buffer,
+                    ((libspdm_secured_message_context_t*)(session_info->secured_message_context))
+                    ->aead_key_size, (uint8_t)(0xFF));
+    libspdm_secured_message_set_response_handshake_encryption_key(
+        session_info->secured_message_context, m_libspdm_dummy_key_buffer,
+        ((libspdm_secured_message_context_t*)(session_info->secured_message_context))
+        ->aead_key_size);
+    libspdm_set_mem(m_libspdm_dummy_salt_buffer,
+                    ((libspdm_secured_message_context_t*)(session_info->secured_message_context))
+                    ->aead_iv_size, (uint8_t)(0xFF));
+    libspdm_secured_message_set_response_handshake_salt(
+        session_info->secured_message_context, m_libspdm_dummy_salt_buffer,
+        ((libspdm_secured_message_context_t*)(session_info->secured_message_context))
+        ->aead_iv_size);
+    ((libspdm_secured_message_context_t *)(session_info->secured_message_context))
+    ->handshake_secret.response_handshake_sequence_number = 0;
+    ((libspdm_secured_message_context_t *)(session_info->secured_message_context))
+    ->handshake_secret.request_handshake_sequence_number = 0;
+    libspdm_secured_message_set_dummy_finished_key (session_info->secured_message_context);
+
+    status = libspdm_send_receive_psk_finish(spdm_context, session_id);
+    assert_int_equal(status, LIBSPDM_STATUS_SUCCESS);
+    assert_int_equal(
+        libspdm_secured_message_get_session_state(
+            spdm_context->session_info[0].secured_message_context),
+        LIBSPDM_SESSION_STATE_ESTABLISHED);
+
+    free(data);
+}
+
+int libspdm_req_psk_finish_test(void)
+{
+    const struct CMUnitTest test_cases[] = {
         /* SendRequest failed*/
-        cmocka_unit_test(libspdm_test_requester_psk_finish_case1),
+        cmocka_unit_test(req_psk_finish_case1),
         /* Successful response*/
-        cmocka_unit_test(libspdm_test_requester_psk_finish_case2),
+        cmocka_unit_test(req_psk_finish_case2),
         /* connection_state check failed*/
-        cmocka_unit_test(libspdm_test_requester_psk_finish_case3),
+        cmocka_unit_test(req_psk_finish_case3),
         /* Error response: SPDM_ERROR_CODE_INVALID_REQUEST*/
-        cmocka_unit_test(libspdm_test_requester_psk_finish_case4),
+        cmocka_unit_test(req_psk_finish_case4),
         /* Always SPDM_ERROR_CODE_BUSY*/
-        cmocka_unit_test(libspdm_test_requester_psk_finish_case5),
+        cmocka_unit_test(req_psk_finish_case5),
         /* SPDM_ERROR_CODE_BUSY + Successful response*/
-        cmocka_unit_test(libspdm_test_requester_psk_finish_case6),
+        cmocka_unit_test(req_psk_finish_case6),
         /* Error response: SPDM_ERROR_CODE_REQUEST_RESYNCH*/
-        cmocka_unit_test(libspdm_test_requester_psk_finish_case7),
+        cmocka_unit_test(req_psk_finish_case7),
         /* Always SPDM_ERROR_CODE_RESPONSE_NOT_READY*/
-        cmocka_unit_test(libspdm_test_requester_psk_finish_case8),
+        cmocka_unit_test(req_psk_finish_case8),
         /* SPDM_ERROR_CODE_RESPONSE_NOT_READY + Successful response*/
-        cmocka_unit_test(libspdm_test_requester_psk_finish_case9),
+        cmocka_unit_test(req_psk_finish_case9),
         /* Unexpected errors*/
-        cmocka_unit_test(libspdm_test_requester_psk_finish_case10),
+        cmocka_unit_test(req_psk_finish_case10),
         /* Buffer reset*/
-        cmocka_unit_test(libspdm_test_requester_psk_finish_case11),
+        cmocka_unit_test(req_psk_finish_case11),
         /* No correct setup*/
-        cmocka_unit_test(libspdm_test_requester_psk_finish_case12),
+        cmocka_unit_test(req_psk_finish_case12),
         /* Wrong response code*/
-        cmocka_unit_test(libspdm_test_requester_psk_finish_case13),
+        cmocka_unit_test(req_psk_finish_case13),
         /* Uninitialized session*/
-        cmocka_unit_test(libspdm_test_requester_psk_finish_case14),
+        cmocka_unit_test(req_psk_finish_case14),
         /* Error response: SPDM_ERROR_CODE_DECRYPT_ERROR*/
-        cmocka_unit_test(libspdm_test_requester_psk_finish_case15),
+        cmocka_unit_test(req_psk_finish_case15),
         /* Buffer verification*/
-        cmocka_unit_test(libspdm_test_requester_psk_finish_case16),
+        cmocka_unit_test(req_psk_finish_case16),
+        /* SPDM 1.4 with OpaqueData */
+        cmocka_unit_test(req_psk_finish_case17),
     };
 
     libspdm_test_context_t test_context = {
         LIBSPDM_TEST_CONTEXT_VERSION,
         true,
-        libspdm_requester_psk_finish_test_send_message,
-        libspdm_requester_psk_finish_test_receive_message,
+        send_message,
+        receive_message,
     };
 
     libspdm_setup_test_context(&test_context);
 
-    return cmocka_run_group_tests(spdm_requester_psk_finish_tests,
+    return cmocka_run_group_tests(test_cases,
                                   libspdm_unit_test_group_setup,
                                   libspdm_unit_test_group_teardown);
 }

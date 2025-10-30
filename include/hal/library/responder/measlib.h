@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2024 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -45,6 +45,10 @@
  *
  * @param request_attribute A bitmask who fields are SPDM_GET_MEASUREMENTS_REQUEST_ATTRIBUTES_*.
  *
+ * @param  request_context_size  The size, in bytes, of request_context.
+ * @param  request_context       If spdm_version is greater than 1.2, then it is a pointer to the
+ *                               Context field in the request message, else it is NULL and ignore
+ *
  * @param  measurements_count
  * When "measurement_index" is zero, returns the total count of
  * measurements available for the device. None of the actual measurements are
@@ -66,14 +70,14 @@
  * The maximum size is SPDM_MAX_MEASUREMENT_RECORD_LENGTH (2^24 - 1 bytes).
  **/
 extern libspdm_return_t libspdm_measurement_collection(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
     void *spdm_context,
-#endif
     spdm_version_number_t spdm_version,
     uint8_t measurement_specification,
     uint32_t measurement_hash_algo,
     uint8_t measurement_index,
     uint8_t request_attribute,
+    size_t request_context_size,
+    const void *request_context,
     uint8_t *content_changed,
     uint8_t *measurements_count,
     void *measurements,
@@ -98,6 +102,10 @@ extern libspdm_return_t libspdm_measurement_collection(
  *
  * @param request_attribute A bitmask who fields are SPDM_GET_MEASUREMENTS_REQUEST_ATTRIBUTES_*.
  *
+ * @param  request_context_size  The size, in bytes, of request_context.
+ * @param  request_context       If spdm_version is greater than 1.2, then it is a pointer to the
+ *                               Context field in the request message, else it is NULL and ignore
+ *
  * @param opaque_data
  * A pointer to a destination buffer whose size, in bytes, is opaque_data_size. The opaque data is
  * copied to this buffer.
@@ -107,14 +115,14 @@ extern libspdm_return_t libspdm_measurement_collection(
  * On output, indicates the size of the opaque data.
  **/
 extern bool libspdm_measurement_opaque_data(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
     void *spdm_context,
-#endif
     spdm_version_number_t spdm_version,
     uint8_t measurement_specification,
     uint32_t measurement_hash_algo,
     uint8_t measurement_index,
     uint8_t request_attribute,
+    size_t request_context_size,
+    const void *request_context,
     void *opaque_data,
     size_t *opaque_data_size);
 
@@ -128,20 +136,19 @@ extern bool libspdm_measurement_opaque_data(
  *                                    It must align with measurement_specification.
  *                                    (SPDM_MEASUREMENT_BLOCK_HEADER_SPECIFICATION_*)
  * @param  measurement_hash_algo      Indicates the measurement hash algorithm.
- *                                    It must align with measurement_hash_alg
  *                                    (SPDM_ALGORITHMS_MEASUREMENT_HASH_ALGO_*)
  *
- * @param  measurement_summary_hash_type   The type of the measurement summary hash.
- * @param  measurement_summary_hash        The buffer to store the measurement summary hash.
- * @param  measurement_summary_hash_size   The size in bytes of the buffer.
+ * @param  measurement_summary_hash_type  The type of the measurement summary hash. Either
+ *                                        SPDM_REQUEST_TCB_COMPONENT_MEASUREMENT_HASH or
+ *                                        SPDM_REQUEST_ALL_MEASUREMENTS_HASH.
+ * @param  measurement_summary_hash       The buffer to store the measurement summary hash.
+ * @param  measurement_summary_hash_size  The size in bytes of the buffer.
  *
- * @retval true  measurement summary hash is generated or skipped.
- * @retval false measurement summary hash is not generated.
+ * @retval true   Measurement summary hash is successfully generated.
+ * @retval false  Error when generating the measurement summary hash.
  **/
 extern bool libspdm_generate_measurement_summary_hash(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
     void *spdm_context,
-#endif
     spdm_version_number_t spdm_version,
     uint32_t base_hash_algo,
     uint8_t measurement_specification,

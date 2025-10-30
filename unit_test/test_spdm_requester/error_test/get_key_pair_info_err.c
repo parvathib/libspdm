@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2024 DMTF. All rights reserved.
+ *  Copyright 2024-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -10,9 +10,8 @@
 
 #if LIBSPDM_ENABLE_CAPABILITY_GET_KEY_PAIR_INFO_CAP
 
-libspdm_return_t libspdm_requester_get_key_pair_info_error_test_send_message(
-    void *spdm_context, size_t request_size, const void *request,
-    uint64_t timeout)
+static libspdm_return_t send_message(
+    void *spdm_context, size_t request_size, const void *request, uint64_t timeout)
 {
     libspdm_test_context_t *spdm_test_context;
 
@@ -25,9 +24,8 @@ libspdm_return_t libspdm_requester_get_key_pair_info_error_test_send_message(
     }
 }
 
-libspdm_return_t libspdm_requester_get_key_pair_info_error_test_receive_message(
-    void *spdm_context, size_t *response_size,
-    void **response, uint64_t timeout)
+static libspdm_return_t receive_message(
+    void *spdm_context, size_t *response_size, void **response, uint64_t timeout)
 {
     libspdm_test_context_t *spdm_test_context;
 
@@ -83,24 +81,23 @@ void libspdm_test_requester_get_key_pair_info_error_case1(void **state)
     assert_int_equal(status, LIBSPDM_STATUS_SEND_FAIL);
 }
 
-libspdm_test_context_t m_libspdm_requester_get_key_pair_info_error_test_context = {
-    LIBSPDM_TEST_CONTEXT_VERSION,
-    true,
-    libspdm_requester_get_key_pair_info_error_test_send_message,
-    libspdm_requester_get_key_pair_info_error_test_receive_message,
-};
-
-int libspdm_requester_get_key_pair_info_error_test_main(void)
+int libspdm_req_get_key_pair_info_error_test(void)
 {
-    const struct CMUnitTest spdm_requester_get_key_pair_info_error_tests[] = {
+    const struct CMUnitTest test_cases[] = {
         /* SendRequest failed*/
         cmocka_unit_test(libspdm_test_requester_get_key_pair_info_error_case1),
     };
 
-    libspdm_setup_test_context(
-        &m_libspdm_requester_get_key_pair_info_error_test_context);
+    libspdm_test_context_t test_context = {
+        LIBSPDM_TEST_CONTEXT_VERSION,
+        true,
+        send_message,
+        receive_message,
+    };
 
-    return cmocka_run_group_tests(spdm_requester_get_key_pair_info_error_tests,
+    libspdm_setup_test_context(&test_context);
+
+    return cmocka_run_group_tests(test_cases,
                                   libspdm_unit_test_group_setup,
                                   libspdm_unit_test_group_teardown);
 }

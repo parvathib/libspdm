@@ -20,11 +20,14 @@ target_sources(spdm_responder_lib
         libspdm_rsp_encap_challenge.c
         libspdm_rsp_encap_get_certificate.c
         libspdm_rsp_encap_get_digests.c
+        libspdm_rsp_encap_get_endpoint_info.c
         libspdm_rsp_encap_key_update.c
         libspdm_rsp_encap_response.c
+        libspdm_rsp_encap_send_event.c
         libspdm_rsp_end_session.c
         libspdm_rsp_endpoint_info.c
         libspdm_rsp_error.c
+        libspdm_rsp_event_ack.c
         libspdm_rsp_finish.c
         libspdm_rsp_handle_response_state.c
         libspdm_rsp_heartbeat.c

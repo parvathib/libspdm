@@ -130,6 +130,7 @@ uint32_t libspdm_get_scratch_buffer_capacity(libspdm_context_t *spdm_context) {
 static bool need_session_info_for_data(libspdm_data_type_t data_type)
 {
     switch (data_type) {
+    case LIBSPDM_DATA_SESSION_SECURED_MESSAGE_VERSION:
     case LIBSPDM_DATA_SESSION_USE_PSK:
     case LIBSPDM_DATA_SESSION_MUT_AUTH_REQUESTED:
     case LIBSPDM_DATA_SESSION_END_SESSION_ATTRIBUTES:
@@ -143,23 +144,8 @@ static bool need_session_info_for_data(libspdm_data_type_t data_type)
     }
 }
 
-/**
- * Set an SPDM context data.
- *
- * @param  spdm_context                  A pointer to the SPDM context.
- * @param  data_type                     Type of the SPDM context data.
- * @param  parameter                    Type specific parameter of the SPDM context data.
- * @param  data                         A pointer to the SPDM context data.
- * @param  data_size                     size in bytes of the SPDM context data.
- *
- * @retval RETURN_SUCCESS               The SPDM context data is set successfully.
- * @retval RETURN_INVALID_PARAMETER     The data is NULL or the data_type is zero.
- * @retval RETURN_UNSUPPORTED           The data_type is unsupported.
- * @retval RETURN_ACCESS_DENIED         The data_type cannot be set.
- * @retval RETURN_NOT_READY             data is not ready to set.
- **/
 libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_type,
-                                  const libspdm_data_parameter_t *parameter, void *data,
+                                  const libspdm_data_parameter_t *parameter, const void *data,
                                   size_t data_size)
 {
     libspdm_context_t *context;
@@ -220,23 +206,14 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
     case LIBSPDM_DATA_SECURED_MESSAGE_VERSION:
         LIBSPDM_ASSERT (data_size <=
                         sizeof(spdm_version_number_t) * SECURED_SPDM_MAX_VERSION_COUNT);
-        if (parameter->location == LIBSPDM_DATA_LOCATION_CONNECTION) {
-            /* Only have one connected version */
-            LIBSPDM_ASSERT (data_size == sizeof(spdm_version_number_t));
-            libspdm_copy_mem(&(context->connection_info.secured_message_version),
-                             sizeof(context->connection_info.secured_message_version),
+        if (parameter->location == LIBSPDM_DATA_LOCATION_LOCAL) {
+            context->local_context.secured_message_version.spdm_version_count =
+                (uint8_t)(data_size / sizeof(spdm_version_number_t));
+            libspdm_copy_mem(context->local_context.secured_message_version.spdm_version,
+                             sizeof(context->local_context.secured_message_version.spdm_version),
                              data,
+                             context->local_context.secured_message_version.spdm_version_count *
                              sizeof(spdm_version_number_t));
-        } else if (parameter->location == LIBSPDM_DATA_LOCATION_LOCAL) {
-            context->local_context.secured_message_version
-            .spdm_version_count = (uint8_t)(data_size / sizeof(spdm_version_number_t));
-            libspdm_copy_mem(context->local_context
-                             .secured_message_version.spdm_version,
-                             sizeof(context->local_context
-                                    .secured_message_version.spdm_version),
-                             data,
-                             context->local_context.secured_message_version.
-                             spdm_version_count * sizeof(spdm_version_number_t));
         } else {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
@@ -284,14 +261,29 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
         break;
+    case LIBSPDM_DATA_CAPABILITY_EXT_FLAGS:
+        if (data_size != sizeof(uint16_t)) {
+            return LIBSPDM_STATUS_INVALID_PARAMETER;
+        }
+
+        data16 = libspdm_read_uint16((const uint8_t *)data);
+
+        if (parameter->location == LIBSPDM_DATA_LOCATION_LOCAL) {
+            context->local_context.capability.flags = data16;
+        } else if (parameter->location == LIBSPDM_DATA_LOCATION_CONNECTION) {
+            context->connection_info.capability.flags = data16;
+        } else {
+            return LIBSPDM_STATUS_INVALID_PARAMETER;
+        }
+        break;
     case LIBSPDM_DATA_CAPABILITY_CT_EXPONENT:
         if (data_size != sizeof(uint8_t)) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
         if (parameter->location == LIBSPDM_DATA_LOCATION_CONNECTION) {
-            context->connection_info.capability.ct_exponent = *(uint8_t *)data;
+            context->connection_info.capability.ct_exponent = *(const uint8_t *)data;
         } else if (parameter->location == LIBSPDM_DATA_LOCATION_LOCAL) {
-            context->local_context.capability.ct_exponent = *(uint8_t *)data;
+            context->local_context.capability.ct_exponent = *(const uint8_t *)data;
         } else {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
@@ -323,9 +315,9 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
         if (parameter->location == LIBSPDM_DATA_LOCATION_CONNECTION) {
-            context->connection_info.algorithm.measurement_spec = *(uint8_t *)data;
+            context->connection_info.algorithm.measurement_spec = *(const uint8_t *)data;
         } else if (parameter->location == LIBSPDM_DATA_LOCATION_LOCAL) {
-            context->local_context.algorithm.measurement_spec = *(uint8_t *)data;
+            context->local_context.algorithm.measurement_spec = *(const uint8_t *)data;
         } else {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
@@ -426,9 +418,9 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
         if (parameter->location == LIBSPDM_DATA_LOCATION_CONNECTION) {
-            context->connection_info.algorithm.other_params_support = *(uint8_t *)data;
+            context->connection_info.algorithm.other_params_support = *(const uint8_t *)data;
         } else if (parameter->location == LIBSPDM_DATA_LOCATION_LOCAL) {
-            context->local_context.algorithm.other_params_support = *(uint8_t *)data;
+            context->local_context.algorithm.other_params_support = *(const uint8_t *)data;
         } else {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
@@ -438,9 +430,58 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
         if (parameter->location == LIBSPDM_DATA_LOCATION_CONNECTION) {
-            context->connection_info.algorithm.mel_spec = *(uint8_t *)data;
+            context->connection_info.algorithm.mel_spec = *(const uint8_t *)data;
         } else if (parameter->location == LIBSPDM_DATA_LOCATION_LOCAL) {
-            context->local_context.algorithm.mel_spec = *(uint8_t *)data;
+            context->local_context.algorithm.mel_spec = *(const uint8_t *)data;
+        } else {
+            return LIBSPDM_STATUS_INVALID_PARAMETER;
+        }
+        break;
+    case LIBSPDM_DATA_PQC_ASYM_ALGO:
+        if (data_size != sizeof(uint32_t)) {
+            return LIBSPDM_STATUS_INVALID_PARAMETER;
+        }
+        data32 = libspdm_read_uint32((const uint8_t *)data);
+        if (parameter->location == LIBSPDM_DATA_LOCATION_CONNECTION) {
+            context->connection_info.algorithm.pqc_asym_algo = data32;
+        } else if (parameter->location == LIBSPDM_DATA_LOCATION_LOCAL) {
+            context->local_context.algorithm.pqc_asym_algo = data32;
+        } else {
+            return LIBSPDM_STATUS_INVALID_PARAMETER;
+        }
+        break;
+    case LIBSPDM_DATA_REQ_PQC_ASYM_ALG:
+        if (data_size != sizeof(uint32_t)) {
+            return LIBSPDM_STATUS_INVALID_PARAMETER;
+        }
+        data32 = libspdm_read_uint32((const uint8_t *)data);
+        if (parameter->location == LIBSPDM_DATA_LOCATION_CONNECTION) {
+            context->connection_info.algorithm.req_pqc_asym_alg = data32;
+        } else if (parameter->location == LIBSPDM_DATA_LOCATION_LOCAL) {
+            context->local_context.algorithm.req_pqc_asym_alg = data32;
+        } else {
+            return LIBSPDM_STATUS_INVALID_PARAMETER;
+        }
+        break;
+    case LIBSPDM_DATA_KEM_ALG:
+        if (data_size != sizeof(uint32_t)) {
+            return LIBSPDM_STATUS_INVALID_PARAMETER;
+        }
+        data32 = libspdm_read_uint32((const uint8_t *)data);
+        if (parameter->location == LIBSPDM_DATA_LOCATION_CONNECTION) {
+            context->connection_info.algorithm.kem_alg = data32;
+        } else if (parameter->location == LIBSPDM_DATA_LOCATION_LOCAL) {
+            context->local_context.algorithm.kem_alg = data32;
+        } else {
+            return LIBSPDM_STATUS_INVALID_PARAMETER;
+        }
+        break;
+    case LIBSPDM_DATA_ALGO_PRIORITY_PQC_FIRST:
+        if (data_size != sizeof(bool)) {
+            return LIBSPDM_STATUS_INVALID_PARAMETER;
+        }
+        if (parameter->location == LIBSPDM_DATA_LOCATION_LOCAL) {
+            context->local_context.algorithm.pqc_first = *(const bool *)data;
         } else {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
@@ -492,7 +533,7 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
         if (data_size != sizeof(uint8_t)) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
-        context->local_context.local_supported_slot_mask = *(uint8_t *)data;
+        context->local_context.local_supported_slot_mask = *(const uint8_t *)data;
         break;
     case LIBSPDM_DATA_LOCAL_KEY_PAIR_ID:
         if (parameter->location != LIBSPDM_DATA_LOCATION_LOCAL) {
@@ -505,7 +546,7 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
         if (data_size != sizeof(spdm_key_pair_id_t)) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
-        context->local_context.local_key_pair_id[slot_id] = *(spdm_key_pair_id_t *)data;
+        context->local_context.local_key_pair_id[slot_id] = *(const spdm_key_pair_id_t *)data;
         break;
     case LIBSPDM_DATA_LOCAL_CERT_INFO:
         if (parameter->location != LIBSPDM_DATA_LOCATION_LOCAL) {
@@ -518,7 +559,7 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
         if (data_size != sizeof(spdm_certificate_info_t)) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
-        context->local_context.local_cert_info[slot_id] = *(spdm_certificate_info_t *)data;
+        context->local_context.local_cert_info[slot_id] = *(const spdm_certificate_info_t *)data;
         break;
     case LIBSPDM_DATA_LOCAL_KEY_USAGE_BIT_MASK:
         if (parameter->location != LIBSPDM_DATA_LOCATION_LOCAL) {
@@ -565,7 +606,7 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
             libspdm_get_hash_size(context->connection_info.algorithm.base_hash_algo);
 
         /*process the SPDM cert header and hash*/
-        data = (uint8_t *)data + sizeof(spdm_cert_chain_t) +
+        data = (const uint8_t *)data + sizeof(spdm_cert_chain_t) +
                libspdm_get_hash_size(context->connection_info.algorithm.base_hash_algo);
         data_size = data_size -
                     (sizeof(spdm_cert_chain_t) +
@@ -636,7 +677,7 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
         if (parameter->location != LIBSPDM_DATA_LOCATION_LOCAL) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
-        mut_auth_requested = *(uint8_t *)data;
+        mut_auth_requested = *(const uint8_t *)data;
         if (((mut_auth_requested != 0) && (mut_auth_requested != 1))) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
@@ -662,7 +703,7 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
         if (parameter->location != LIBSPDM_DATA_LOCATION_LOCAL) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
-        mut_auth_requested = *(uint8_t *)data;
+        mut_auth_requested = *(const uint8_t *)data;
         if (((mut_auth_requested != 0) &&
              (mut_auth_requested !=
               SPDM_KEY_EXCHANGE_RESPONSE_MUT_AUTH_REQUESTED) &&
@@ -680,6 +721,15 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
         }
         context->encap_context.req_slot_id = slot_id;
         break;
+    case LIBSPDM_DATA_MANDATORY_MUT_AUTH:
+        if (data_size != sizeof(bool)) {
+            return LIBSPDM_STATUS_INVALID_PARAMETER;
+        }
+        if (parameter->location != LIBSPDM_DATA_LOCATION_LOCAL) {
+            return LIBSPDM_STATUS_INVALID_PARAMETER;
+        }
+        context->local_context.mandatory_mut_auth = *(const bool *)data;
+        break;
     case LIBSPDM_DATA_HEARTBEAT_PERIOD:
         if (data_size != sizeof(uint8_t)) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
@@ -687,19 +737,19 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
         if (parameter->location != LIBSPDM_DATA_LOCATION_LOCAL) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
-        context->local_context.heartbeat_period = *(uint8_t *)data;
+        context->local_context.heartbeat_period = *(const uint8_t *)data;
         break;
     case LIBSPDM_DATA_APP_CONTEXT_DATA:
-        if (data_size != sizeof(void *) || *(void **)data == NULL) {
+        if (data_size != sizeof(void *) || *(void *const *)data == NULL) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
-        context->app_context_data_ptr = *(void **)data;
+        context->app_context_data_ptr = *(void *const *)data;
         break;
     case LIBSPDM_DATA_HANDLE_ERROR_RETURN_POLICY:
         if (data_size != sizeof(uint8_t)) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
-        context->handle_error_return_policy = *(uint8_t *)data;
+        context->handle_error_return_policy = *(const uint8_t *)data;
         break;
     case LIBSPDM_DATA_VCA_CACHE:
         if (data_size > sizeof(context->transcript.message_a.buffer)) {
@@ -717,43 +767,43 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
         if (parameter->location != LIBSPDM_DATA_LOCATION_LOCAL) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
-        context->local_context.is_requester = *(bool *)data;
+        context->local_context.is_requester = *(const bool *)data;
         break;
     case LIBSPDM_DATA_REQUEST_RETRY_TIMES:
         if (data_size != sizeof(uint8_t)) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
-        context->retry_times = *(uint8_t *)data;
+        context->retry_times = *(const uint8_t *)data;
         break;
     case LIBSPDM_DATA_REQUEST_RETRY_DELAY_TIME:
         if (data_size != sizeof(uint64_t)) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
-        context->retry_delay_time = *(uint64_t *)data;
+        context->retry_delay_time = *(const uint64_t *)data;
         break;
     case LIBSPDM_DATA_MAX_DHE_SESSION_COUNT:
         if (data_size != sizeof(uint32_t)) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
-        if (*(uint32_t *)data > LIBSPDM_MAX_SESSION_COUNT - context->max_psk_session_count) {
+        if (*(const uint32_t *)data > LIBSPDM_MAX_SESSION_COUNT - context->max_psk_session_count) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
-        context->max_dhe_session_count = *(uint32_t *)data;
+        context->max_dhe_session_count = *(const uint32_t *)data;
         break;
     case LIBSPDM_DATA_MAX_PSK_SESSION_COUNT:
         if (data_size != sizeof(uint32_t)) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
-        if (*(uint32_t *)data > LIBSPDM_MAX_SESSION_COUNT - context->max_dhe_session_count) {
+        if (*(const uint32_t *)data > LIBSPDM_MAX_SESSION_COUNT - context->max_dhe_session_count) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
-        context->max_psk_session_count = *(uint32_t *)data;
+        context->max_psk_session_count = *(const uint32_t *)data;
         break;
     case LIBSPDM_DATA_MAX_SPDM_SESSION_SEQUENCE_NUMBER:
         if (data_size != sizeof(uint64_t)) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
-        context->max_spdm_session_sequence_number = *(uint64_t *)data;
+        context->max_spdm_session_sequence_number = *(const uint64_t *)data;
         if (context->max_spdm_session_sequence_number == 0) {
             context->max_spdm_session_sequence_number = LIBSPDM_MAX_SPDM_SESSION_SEQUENCE_NUMBER;
         }
@@ -762,18 +812,18 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
         if (data_size != sizeof(uint8_t)) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
-        if (*(uint8_t*)data != LIBSPDM_SPDM_10_11_VERIFY_SIGNATURE_ENDIAN_BIG_ONLY &&
-            *(uint8_t*)data != LIBSPDM_SPDM_10_11_VERIFY_SIGNATURE_ENDIAN_LITTLE_ONLY &&
-            *(uint8_t*)data != LIBSPDM_SPDM_10_11_VERIFY_SIGNATURE_ENDIAN_BIG_OR_LITTLE) {
+        if (*(const uint8_t*)data != LIBSPDM_SPDM_10_11_VERIFY_SIGNATURE_ENDIAN_BIG_ONLY &&
+            *(const uint8_t*)data != LIBSPDM_SPDM_10_11_VERIFY_SIGNATURE_ENDIAN_LITTLE_ONLY &&
+            *(const uint8_t*)data != LIBSPDM_SPDM_10_11_VERIFY_SIGNATURE_ENDIAN_BIG_OR_LITTLE) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
-        context->spdm_10_11_verify_signature_endian = *(uint8_t*)data;
+        context->spdm_10_11_verify_signature_endian = *(const uint8_t*)data;
         break;
     case LIBSPDM_DATA_SEQUENCE_NUMBER_ENDIAN:
         if (data_size != sizeof(uint8_t)) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
-        context->sequence_number_endian = *(uint8_t *)data;
+        context->sequence_number_endian = *(const uint8_t *)data;
         break;
     case LIBSPDM_DATA_MULTI_KEY_CONN_REQ:
         if (parameter->location != LIBSPDM_DATA_LOCATION_CONNECTION) {
@@ -782,7 +832,7 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
         if (data_size != sizeof(bool)) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
-        context->connection_info.multi_key_conn_req = *(bool *)data;
+        context->connection_info.multi_key_conn_req = *(const bool *)data;
         break;
     case LIBSPDM_DATA_MULTI_KEY_CONN_RSP:
         if (parameter->location != LIBSPDM_DATA_LOCATION_CONNECTION) {
@@ -791,16 +841,7 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
         if (data_size != sizeof(bool)) {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
-        context->connection_info.multi_key_conn_rsp = *(bool *)data;
-        break;
-    case LIBSPDM_DATA_TOTAL_KEY_PAIRS:
-        if (data_size != sizeof(uint8_t)) {
-            return LIBSPDM_STATUS_INVALID_PARAMETER;
-        }
-        if (parameter->location != LIBSPDM_DATA_LOCATION_LOCAL) {
-            return LIBSPDM_STATUS_INVALID_PARAMETER;
-        }
-        context->local_context.total_key_pairs = *(uint8_t *)data;
+        context->connection_info.multi_key_conn_rsp = *(const bool *)data;
         break;
     default:
         return LIBSPDM_STATUS_UNSUPPORTED_CAP;
@@ -810,25 +851,6 @@ libspdm_return_t libspdm_set_data(void *spdm_context, libspdm_data_type_t data_t
     return LIBSPDM_STATUS_SUCCESS;
 }
 
-/**
- * Get an SPDM context data.
- *
- * @param  spdm_context                  A pointer to the SPDM context.
- * @param  data_type                     Type of the SPDM context data.
- * @param  parameter                    Type specific parameter of the SPDM context data.
- * @param  data                         A pointer to the SPDM context data.
- * @param  data_size                     size in bytes of the SPDM context data.
- *                                     On input, it means the size in bytes of data buffer.
- *                                     On output, it means the size in bytes of copied data buffer if RETURN_SUCCESS,
- *                                     and means the size in bytes of desired data buffer if RETURN_BUFFER_TOO_SMALL.
- *
- * @retval RETURN_SUCCESS               The SPDM context data is set successfully.
- * @retval RETURN_INVALID_PARAMETER     The data_size is NULL or the data is NULL and *data_size is not zero.
- * @retval RETURN_UNSUPPORTED           The data_type is unsupported.
- * @retval RETURN_NOT_FOUND             The data_type cannot be found.
- * @retval RETURN_NOT_READY             The data is not ready to return.
- * @retval RETURN_BUFFER_TOO_SMALL      The buffer is too small to hold the data.
- **/
 libspdm_return_t libspdm_get_data(void *spdm_context, libspdm_data_type_t data_type,
                                   const libspdm_data_parameter_t *parameter,
                                   void *data, size_t *data_size)
@@ -878,12 +900,9 @@ libspdm_return_t libspdm_get_data(void *spdm_context, libspdm_data_type_t data_t
         target_data_size = sizeof(spdm_version_number_t);
         target_data = &(context->connection_info.version);
         break;
-    case LIBSPDM_DATA_SECURED_MESSAGE_VERSION:
-        if (parameter->location != LIBSPDM_DATA_LOCATION_CONNECTION) {
-            return LIBSPDM_STATUS_INVALID_PARAMETER;
-        }
+    case LIBSPDM_DATA_SESSION_SECURED_MESSAGE_VERSION:
         target_data_size = sizeof(spdm_version_number_t);
-        target_data = &(context->connection_info.secured_message_version);
+        target_data = &(secured_context->secured_message_version);
         break;
     case LIBSPDM_DATA_CAPABILITY_FLAGS:
         target_data_size = sizeof(uint32_t);
@@ -891,6 +910,16 @@ libspdm_return_t libspdm_get_data(void *spdm_context, libspdm_data_type_t data_t
             target_data = &context->connection_info.capability.flags;
         } else if (parameter->location == LIBSPDM_DATA_LOCATION_LOCAL) {
             target_data = &context->local_context.capability.flags;
+        } else {
+            return LIBSPDM_STATUS_INVALID_PARAMETER;
+        }
+        break;
+    case LIBSPDM_DATA_CAPABILITY_EXT_FLAGS:
+        target_data_size = sizeof(uint16_t);
+        if (parameter->location == LIBSPDM_DATA_LOCATION_CONNECTION) {
+            target_data = &context->connection_info.capability.ext_flags;
+        } else if (parameter->location == LIBSPDM_DATA_LOCATION_LOCAL) {
+            target_data = &context->local_context.capability.ext_flags;
         } else {
             return LIBSPDM_STATUS_INVALID_PARAMETER;
         }
@@ -1004,6 +1033,27 @@ libspdm_return_t libspdm_get_data(void *spdm_context, libspdm_data_type_t data_t
         }
         target_data_size = sizeof(uint8_t);
         target_data = &context->connection_info.algorithm.mel_spec;
+        break;
+    case LIBSPDM_DATA_PQC_ASYM_ALGO:
+        if (parameter->location != LIBSPDM_DATA_LOCATION_CONNECTION) {
+            return LIBSPDM_STATUS_INVALID_PARAMETER;
+        }
+        target_data_size = sizeof(uint32_t);
+        target_data = &context->connection_info.algorithm.pqc_asym_algo;
+        break;
+    case LIBSPDM_DATA_REQ_PQC_ASYM_ALG:
+        if (parameter->location != LIBSPDM_DATA_LOCATION_CONNECTION) {
+            return LIBSPDM_STATUS_INVALID_PARAMETER;
+        }
+        target_data_size = sizeof(uint32_t);
+        target_data = &context->connection_info.algorithm.req_pqc_asym_alg;
+        break;
+    case LIBSPDM_DATA_KEM_ALG:
+        if (parameter->location != LIBSPDM_DATA_LOCATION_CONNECTION) {
+            return LIBSPDM_STATUS_INVALID_PARAMETER;
+        }
+        target_data_size = sizeof(uint32_t);
+        target_data = &context->connection_info.algorithm.kem_alg;
         break;
     case LIBSPDM_DATA_CONNECTION_STATE:
         if (parameter->location != LIBSPDM_DATA_LOCATION_CONNECTION) {
@@ -1161,13 +1211,6 @@ libspdm_return_t libspdm_get_data(void *spdm_context, libspdm_data_type_t data_t
         }
         target_data_size = sizeof(bool);
         target_data = &context->connection_info.multi_key_conn_rsp;
-        break;
-    case LIBSPDM_DATA_TOTAL_KEY_PAIRS:
-        if (parameter->location != LIBSPDM_DATA_LOCATION_LOCAL) {
-            return LIBSPDM_STATUS_INVALID_PARAMETER;
-        }
-        target_data_size = sizeof(uint8_t);
-        target_data = &context->local_context.total_key_pairs;
         break;
     default:
         return LIBSPDM_STATUS_UNSUPPORTED_CAP;
@@ -1583,16 +1626,7 @@ void libspdm_reset_message_buffer_via_request_code(void *context, void *session_
         break;
     }
 }
-/**
- * Append message A cache in SPDM context.
- *
- * @param  spdm_context                  A pointer to the SPDM context.
- * @param  message                      message buffer.
- * @param  message_size                  size in bytes of message buffer.
- *
- * @return RETURN_SUCCESS          message is appended.
- * @return RETURN_OUT_OF_RESOURCES message is not appended because the internal cache is full.
- **/
+
 libspdm_return_t libspdm_append_message_a(libspdm_context_t *spdm_context, const void *message,
                                           size_t message_size)
 {
@@ -1600,16 +1634,6 @@ libspdm_return_t libspdm_append_message_a(libspdm_context_t *spdm_context, const
                                          message, message_size);
 }
 
-/**
- * Append message D cache in SPDM context.
- *
- * @param  spdm_context  A pointer to the SPDM context.
- * @param  message       Message buffer.
- * @param  message_size  Size in bytes of message buffer.
- *
- * @return RETURN_SUCCESS          message is appended.
- * @return RETURN_OUT_OF_RESOURCES message is not appended because the internal cache is full.
- **/
 libspdm_return_t libspdm_append_message_d(libspdm_context_t *spdm_context, const void *message,
                                           size_t message_size)
 {
@@ -1621,16 +1645,6 @@ libspdm_return_t libspdm_append_message_d(libspdm_context_t *spdm_context, const
                                          message, message_size);
 }
 
-/**
- * Append message B cache in SPDM context.
- *
- * @param  spdm_context                  A pointer to the SPDM context.
- * @param  message                      message buffer.
- * @param  message_size                  size in bytes of message buffer.
- *
- * @return RETURN_SUCCESS          message is appended.
- * @return RETURN_OUT_OF_RESOURCES message is not appended because the internal cache is full.
- **/
 libspdm_return_t libspdm_append_message_b(libspdm_context_t *spdm_context, const void *message,
                                           size_t message_size)
 {
@@ -1684,16 +1698,6 @@ libspdm_return_t libspdm_append_message_b(libspdm_context_t *spdm_context, const
 #endif
 }
 
-/**
- * Append message C cache in SPDM context.
- *
- * @param  spdm_context                  A pointer to the SPDM context.
- * @param  message                      message buffer.
- * @param  message_size                  size in bytes of message buffer.
- *
- * @return RETURN_SUCCESS          message is appended.
- * @return RETURN_OUT_OF_RESOURCES message is not appended because the internal cache is full.
- **/
 libspdm_return_t libspdm_append_message_c(libspdm_context_t *spdm_context, const void *message,
                                           size_t message_size)
 {
@@ -1747,16 +1751,6 @@ libspdm_return_t libspdm_append_message_c(libspdm_context_t *spdm_context, const
 #endif
 }
 
-/**
- * Append message MutB cache in SPDM context.
- *
- * @param  spdm_context                  A pointer to the SPDM context.
- * @param  message                      message buffer.
- * @param  message_size                  size in bytes of message buffer.
- *
- * @return RETURN_SUCCESS          message is appended.
- * @return RETURN_OUT_OF_RESOURCES message is not appended because the internal cache is full.
- **/
 libspdm_return_t libspdm_append_message_mut_b(libspdm_context_t *spdm_context, const void *message,
                                               size_t message_size)
 {
@@ -1815,16 +1809,6 @@ libspdm_return_t libspdm_append_message_mut_b(libspdm_context_t *spdm_context, c
 #endif
 }
 
-/**
- * Append message MutC cache in SPDM context.
- *
- * @param  spdm_context                  A pointer to the SPDM context.
- * @param  message                      message buffer.
- * @param  message_size                  size in bytes of message buffer.
- *
- * @return RETURN_SUCCESS          message is appended.
- * @return RETURN_OUT_OF_RESOURCES message is not appended because the internal cache is full.
- **/
 libspdm_return_t libspdm_append_message_mut_c(libspdm_context_t *spdm_context, const void *message,
                                               size_t message_size)
 {
@@ -1883,19 +1867,6 @@ libspdm_return_t libspdm_append_message_mut_c(libspdm_context_t *spdm_context, c
 #endif
 }
 
-/**
- * Append message M cache in SPDM context.
- * If session_info is NULL, this function will use M cache of SPDM context,
- * else will use M cache of SPDM session context.
- *
- * @param  spdm_context                  A pointer to the SPDM context.
- * @param  session_info                  A pointer to the SPDM session context.
- * @param  message                      message buffer.
- * @param  message_size                  size in bytes of message buffer.
- *
- * @return RETURN_SUCCESS          message is appended.
- * @return RETURN_OUT_OF_RESOURCES message is not appended because the internal cache is full.
- **/
 libspdm_return_t libspdm_append_message_m(libspdm_context_t *spdm_context, void *session_info,
                                           const void *message, size_t message_size)
 {
@@ -2008,18 +1979,6 @@ libspdm_return_t libspdm_append_message_m(libspdm_context_t *spdm_context, void 
 #endif
 }
 
-/**
- * Append message K cache in SPDM context.
- *
- * @param  spdm_context                  A pointer to the SPDM context.
- * @param  spdm_session_info              A pointer to the SPDM session context.
- * @param  is_requester                  Indicate of the key generation for a requester or a responder.
- * @param  message                      message buffer.
- * @param  message_size                  size in bytes of message buffer.
- *
- * @return RETURN_SUCCESS          message is appended.
- * @return RETURN_OUT_OF_RESOURCES message is not appended because the internal cache is full.
- **/
 libspdm_return_t libspdm_append_message_k(libspdm_context_t *spdm_context,
                                           void *session_info,
                                           bool is_requester, const void *message,
@@ -2168,18 +2127,6 @@ libspdm_return_t libspdm_append_message_k(libspdm_context_t *spdm_context,
 #endif
 }
 
-/**
- * Append message EncapD cache in SPDM context.
- *
- * @param  spdm_context       A pointer to the SPDM context.
- * @param  spdm_session_info  A pointer to the SPDM session context.
- * @param  is_requester       Indicate of the key generation for a requester or a responder.
- * @param  message            Message buffer.
- * @param  message_size       Size in bytes of message buffer.
- *
- * @return RETURN_SUCCESS          message is appended.
- * @return RETURN_OUT_OF_RESOURCES message is not appended because the internal cache is full.
- **/
 libspdm_return_t libspdm_append_message_encap_d(libspdm_context_t *spdm_context,
                                                 void *session_info,
                                                 bool is_requester, const void *message,
@@ -2198,18 +2145,6 @@ libspdm_return_t libspdm_append_message_encap_d(libspdm_context_t *spdm_context,
         message_size);
 }
 
-/**
- * Append message F cache in SPDM context.
- *
- * @param  spdm_context                  A pointer to the SPDM context.
- * @param  spdm_session_info              A pointer to the SPDM session context.
- * @param  is_requester                  Indicate of the key generation for a requester or a responder.
- * @param  message                      message buffer.
- * @param  message_size                  size in bytes of message buffer.
- *
- * @return RETURN_SUCCESS          message is appended.
- * @return RETURN_OUT_OF_RESOURCES message is not appended because the internal cache is full.
- **/
 libspdm_return_t libspdm_append_message_f(libspdm_context_t *spdm_context,
                                           void *session_info,
                                           bool is_requester, const void *message,
@@ -2375,19 +2310,6 @@ libspdm_return_t libspdm_append_message_f(libspdm_context_t *spdm_context,
 #endif
 }
 
-/**
- * Append message E cache in SPDM context.
- * If session_info is NULL, this function will use E cache of SPDM context,
- * else will use E cache of SPDM session context.
- *
- * @param  spdm_context                  A pointer to the SPDM context.
- * @param  session_info                  A pointer to the SPDM session context.
- * @param  message                      message buffer.
- * @param  message_size                  size in bytes of message buffer.
- *
- * @return RETURN_SUCCESS          message is appended.
- * @return RETURN_OUT_OF_RESOURCES message is not appended because the internal cache is full.
- **/
 libspdm_return_t libspdm_append_message_e(libspdm_context_t *spdm_context, void *session_info,
                                           const void *message, size_t message_size)
 {
@@ -2489,19 +2411,6 @@ libspdm_return_t libspdm_append_message_e(libspdm_context_t *spdm_context, void 
 #endif
 }
 
-/**
- * Append message encap E cache in SPDM context.
- * If session_info is NULL, this function will use encap E cache of SPDM context,
- * else will use encap E cache of SPDM session context.
- *
- * @param  spdm_context                  A pointer to the SPDM context.
- * @param  session_info                  A pointer to the SPDM session context.
- * @param  message                      message buffer.
- * @param  message_size                  size in bytes of message buffer.
- *
- * @return RETURN_SUCCESS          message is appended.
- * @return RETURN_OUT_OF_RESOURCES message is not appended because the internal cache is full.
- **/
 libspdm_return_t libspdm_append_message_encap_e(libspdm_context_t *spdm_context, void *session_info,
                                                 const void *message, size_t message_size)
 {
@@ -2666,6 +2575,45 @@ bool libspdm_is_capabilities_flag_supported(const libspdm_context_t *spdm_contex
         ((responder_capabilities_flag == 0) ||
          ((negotiated_responder_capabilities_flag &
            responder_capabilities_flag) != 0))) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+/**
+ * This function returns if a capabilities extended flag is supported in current SPDM connection.
+ *
+ * @param  spdm_context                     A pointer to the SPDM context.
+ * @param  is_requester                     Is the function called from a requester.
+ * @param  requester_capabilities_ext_flag  The requester capabilities extended flag to be checked
+ * @param  responder_capabilities_ext_flag  The responder capabilities extended flag to be checked
+ *
+ * @retval true  the capabilities extended flag is supported.
+ * @retval false the capabilities extended flag is not supported.
+ **/
+bool libspdm_is_capabilities_ext_flag_supported(const libspdm_context_t *spdm_context,
+                                                bool is_requester,
+                                                uint16_t requester_capabilities_ext_flag,
+                                                uint16_t responder_capabilities_ext_flag)
+{
+    uint16_t negotiated_requester_capabilities_ext_flag;
+    uint16_t negotiated_responder_capabilities_ext_flag;
+
+    if (is_requester) {
+        negotiated_requester_capabilities_ext_flag = spdm_context->local_context.capability.ext_flags;
+        negotiated_responder_capabilities_ext_flag = spdm_context->connection_info.capability.ext_flags;
+    } else {
+        negotiated_requester_capabilities_ext_flag = spdm_context->connection_info.capability.ext_flags;
+        negotiated_responder_capabilities_ext_flag = spdm_context->local_context.capability.ext_flags;
+    }
+
+    if (((requester_capabilities_ext_flag == 0) ||
+         ((negotiated_requester_capabilities_ext_flag &
+           requester_capabilities_ext_flag) != 0)) &&
+        ((responder_capabilities_ext_flag == 0) ||
+         ((negotiated_responder_capabilities_ext_flag &
+           responder_capabilities_ext_flag) != 0))) {
         return true;
     } else {
         return false;
@@ -2952,14 +2900,6 @@ void libspdm_get_scratch_buffer (
 #endif
 }
 
-/**
- * Acquire a device sender buffer for transport layer message.
- *
- * @param  context                       A pointer to the SPDM context.
- * @param  msg_buf_ptr                   A pointer to a sender buffer.
- *
- * @retval RETURN_SUCCESS               The sender buffer is acquired.
- **/
 libspdm_return_t libspdm_acquire_sender_buffer (
     libspdm_context_t *spdm_context, size_t *max_msg_size, void **msg_buf_ptr)
 {
@@ -2982,13 +2922,6 @@ libspdm_return_t libspdm_acquire_sender_buffer (
     return LIBSPDM_STATUS_SUCCESS;
 }
 
-/**
- * Release a device sender buffer for transport layer message.
- *
- * @param  context                       A pointer to the SPDM context.
- *
- * @retval RETURN_SUCCESS               The sender buffer is Released.
- **/
 void libspdm_release_sender_buffer (libspdm_context_t *spdm_context)
 {
     LIBSPDM_ASSERT(spdm_context->sender_buffer != NULL);
@@ -3015,15 +2948,6 @@ void libspdm_get_sender_buffer (
     *sender_buffer_size = spdm_context->sender_buffer_size;
 }
 
-/**
- * Acquire a device receiver buffer for transport layer message.
- *
- * @param  context                       A pointer to the SPDM context.
- * @param  max_msg_size                  size in bytes of the maximum size of receiver buffer.
- * @param  msg_buf_pt                    A pointer to a receiver buffer.
- *
- * @retval RETURN_SUCCESS               The receiver buffer is acquired.
- **/
 libspdm_return_t libspdm_acquire_receiver_buffer (
     libspdm_context_t *spdm_context, size_t *max_msg_size, void **msg_buf_ptr)
 {
@@ -3046,13 +2970,6 @@ libspdm_return_t libspdm_acquire_receiver_buffer (
     return LIBSPDM_STATUS_SUCCESS;
 }
 
-/**
- * Release a device receiver buffer for transport layer message.
- *
- * @param  context                       A pointer to the SPDM context.
- *
- * @retval RETURN_SUCCESS               The receiver buffer is Released.
- **/
 void libspdm_release_receiver_buffer (libspdm_context_t *spdm_context)
 {
     LIBSPDM_ASSERT(spdm_context->receiver_buffer != NULL);
@@ -3110,18 +3027,16 @@ void libspdm_set_last_spdm_error_struct(void *spdm_context, libspdm_error_struct
 }
 
 #if LIBSPDM_FIPS_MODE
-/**
- * Initialize an libspdm_fips_selftest_context.
- *
- * @param  fips_selftest_context       A pointer to the fips_selftest_context.
- *
- * @retval RETURN_SUCCESS       context is initialized.
- * @retval RETURN_DEVICE_ERROR  context initialization failed.
- */
-libspdm_return_t libspdm_init_fips_selftest_context(void *fips_selftest_context)
+libspdm_return_t libspdm_init_fips_selftest_context(void *fips_selftest_context,
+                                                    size_t buffer_size,
+                                                    void *buffer)
 {
     libspdm_fips_selftest_context_t *context;
     LIBSPDM_ASSERT(fips_selftest_context != NULL);
+    LIBSPDM_ASSERT(buffer_size >= LIBSPDM_FIPS_REQUIRED_BUFFER_SIZE);
+    if (buffer_size > 0) {
+        LIBSPDM_ASSERT(buffer != NULL);
+    }
 
     context = fips_selftest_context;
 
@@ -3129,6 +3044,9 @@ libspdm_return_t libspdm_init_fips_selftest_context(void *fips_selftest_context)
     context->tested_algo = 0;
     /*self_test result is false for every used algo*/
     context->self_test_result = 0;
+    /*The buffer provided by integrator to hold large intermediate results*/
+    context->selftest_buffer_size = buffer_size;
+    context->selftest_buffer = buffer;
 
     return LIBSPDM_STATUS_SUCCESS;
 }
@@ -3144,6 +3062,16 @@ size_t libspdm_get_fips_selftest_context_size(void)
 
     size = sizeof(libspdm_fips_selftest_context_t);
     return size;
+}
+
+/**
+ * Returns the required buffer size for FIPS self-tests.
+ *
+ * @retval  The required buffer size in bytes.
+ */
+size_t libspdm_get_fips_selftest_buffer_size(void)
+{
+    return LIBSPDM_FIPS_REQUIRED_BUFFER_SIZE;
 }
 
 /**
@@ -3215,25 +3143,6 @@ bool libspdm_export_fips_selftest_context_from_spdm_context(void *spdm_context,
 
 #endif /* LIBSPDM_FIPS_MODE */
 
-/**
- * Initialize an SPDM context, as well as all secured message contexts,
- * in the specified locations.
- *
- * The size in bytes of the spdm_context can be returned by
- * libspdm_get_context_size_without_secured_context.
- *
- * The size in bytes of a single secured message context can be returned by
- * libspdm_secured_message_get_context_size.
- *
- * @param  spdm_context          A pointer to the SPDM context.
- * @param  secured_contexts      An array of pointers, with each entry containing
- *                               the location of a secured message context.
- * @param  num_secured_contexts  Number of secured message contexts to initialize.
- *                               Currently, only LIBSPDM_MAX_SESSION_COUNT is supported.
- *
- * @retval RETURN_SUCCESS        Contexts are initialized.
- * @retval RETURN_DEVICE_ERROR   Context initialization failed.
- */
 libspdm_return_t libspdm_init_context_with_secured_context(void *spdm_context,
                                                            void **secured_contexts,
                                                            size_t num_secured_contexts)
@@ -3278,6 +3187,8 @@ libspdm_return_t libspdm_init_context_with_secured_context(void *spdm_context,
                                                      SPDM_VERSION_NUMBER_SHIFT_BIT;
     context->local_context.version.spdm_version[3] = SPDM_MESSAGE_VERSION_13 <<
                                                      SPDM_VERSION_NUMBER_SHIFT_BIT;
+    context->local_context.version.spdm_version[4] = SPDM_MESSAGE_VERSION_14 <<
+                                                     SPDM_VERSION_NUMBER_SHIFT_BIT;
     context->local_context.secured_message_version.spdm_version_count =
         SECURED_SPDM_MAX_VERSION_COUNT;
     context->local_context.secured_message_version.spdm_version[0] =
@@ -3315,18 +3226,6 @@ libspdm_return_t libspdm_init_context_with_secured_context(void *spdm_context,
     return LIBSPDM_STATUS_SUCCESS;
 }
 
-/**
- * Initialize an SPDM context, as well as secured message contexts.
- * The secured message contexts are appended to the context structure.
- *
- * The total size in bytes of the spdm_context and all secured message
- * contexts can be returned by libspdm_get_context_size().
- *
- * @param  spdm_context         A pointer to the SPDM context.
- *
- * @retval RETURN_SUCCESS       context is initialized.
- * @retval RETURN_DEVICE_ERROR  context initialization failed.
- */
 libspdm_return_t libspdm_init_context(void *spdm_context)
 {
     libspdm_context_t *context;
@@ -3368,6 +3267,7 @@ void libspdm_reset_context(void *spdm_context)
         libspdm_session_info_init(context,
                                   &context->session_info[index],
                                   INVALID_SESSION_ID,
+                                  0,
                                   false);
     }
 
@@ -3426,11 +3326,21 @@ void libspdm_deinit_context(void *spdm_context)
 
         if (pubkey_context != NULL) {
             if (is_requester) {
-                libspdm_asym_free(
-                    context->connection_info.algorithm.base_asym_algo, pubkey_context);
+                if (context->connection_info.algorithm.pqc_asym_algo != 0) {
+                    libspdm_pqc_asym_free(
+                        context->connection_info.algorithm.pqc_asym_algo, pubkey_context);
+                } else {
+                    libspdm_asym_free(
+                        context->connection_info.algorithm.base_asym_algo, pubkey_context);
+                }
             } else {
-                libspdm_req_asym_free(
-                    context->connection_info.algorithm.req_base_asym_alg, pubkey_context);
+                if (context->connection_info.algorithm.req_pqc_asym_alg != 0) {
+                    libspdm_req_pqc_asym_free(
+                        context->connection_info.algorithm.req_pqc_asym_alg, pubkey_context);
+                } else {
+                    libspdm_req_asym_free(
+                        context->connection_info.algorithm.req_base_asym_alg, pubkey_context);
+                }
             }
 
             context->connection_info.peer_used_cert_chain[slot_index].leaf_cert_public_key = NULL;

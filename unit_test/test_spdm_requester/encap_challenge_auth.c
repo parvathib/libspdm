@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2022 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -42,7 +42,7 @@ extern size_t libspdm_secret_lib_challenge_opaque_data_size;
  * Expected behavior: the requester accepts the request and produces a valid
  * CHALLENGE_AUTH response message and Completion of CHALLENGE sets M1/M2 to null.
  **/
-void test_libspdm_requester_encap_challenge_auth_case1(void **state)
+static void req_encap_challenge_auth_case1(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -131,7 +131,7 @@ void test_libspdm_requester_encap_challenge_auth_case1(void **state)
  * Test 2:
  * Expected behavior:
  **/
-void test_libspdm_requester_encap_challenge_auth_case2(void **state)
+static void req_encap_challenge_auth_case2(void **state)
 {
 }
 
@@ -141,7 +141,7 @@ void test_libspdm_requester_encap_challenge_auth_case2(void **state)
  * Expected behavior: the requester accepts the request and produces a valid
  * CHALLENGE_AUTH response message.
  **/
-void test_libspdm_requester_encap_challenge_auth_case3(void **state)
+static void req_encap_challenge_auth_case3(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -195,7 +195,7 @@ void test_libspdm_requester_encap_challenge_auth_case3(void **state)
  * Expected behavior: the requester rejects the request, and produces an ERROR message
  * indicating the UnexpectedRequest.
  **/
-void test_libspdm_requester_encap_challenge_auth_case4(void **state)
+static void req_encap_challenge_auth_case4(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -249,7 +249,7 @@ void test_libspdm_requester_encap_challenge_auth_case4(void **state)
  * Expected behavior: the requester rejects the request, and produces an ERROR message
  * indicating the UnexpectedRequest.
  **/
-void test_libspdm_requester_encap_challenge_auth_case5(void **state)
+static void req_encap_challenge_auth_case5(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -303,7 +303,7 @@ void test_libspdm_requester_encap_challenge_auth_case5(void **state)
  * Expected behavior: the requester accepts the request and produces a valid
  * CHALLENGE_AUTH response message using provisioned public key (slot number 0xFF).
  **/
-void test_libspdm_requester_encap_challenge_auth_case6(void **state)
+static void req_encap_challenge_auth_case6(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -367,9 +367,9 @@ void test_libspdm_requester_encap_challenge_auth_case6(void **state)
 /**
  * Test 7: receiving a correct CHALLENGE message from the requester with context field
  * no opaque data, no measurements, and slot number 0.
- * Expected behavior:  get a RETURN_SUCCESS return code, correct context field
+ * Expected behavior:  get a LIBSPDM_STATUS_SUCCESS return code, correct context field
  **/
-void test_libspdm_requester_encap_challenge_auth_case7(void **state)
+static void req_encap_challenge_auth_case7(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -473,7 +473,7 @@ void test_libspdm_requester_encap_challenge_auth_case7(void **state)
  * Expected behavior: the responder accepts the request, but produces an ERROR message
  * indicating the invalid state.
  **/
-void test_libspdm_requester_encap_challenge_auth_case8(void **state)
+static void req_encap_challenge_auth_case8(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -563,23 +563,23 @@ void test_libspdm_requester_encap_challenge_auth_case8(void **state)
     free(data);
 }
 
-int libspdm_requester_encap_challenge_auth_test_main(void)
+int libspdm_req_encap_challenge_auth_test(void)
 {
-    const struct CMUnitTest spdm_requester_challenge_auth_tests[] = {
+    const struct CMUnitTest test_cases[] = {
         /* Success Case*/
-        cmocka_unit_test(test_libspdm_requester_encap_challenge_auth_case1),
+        cmocka_unit_test(req_encap_challenge_auth_case1),
         /* Can be populated with new test.*/
-        cmocka_unit_test(test_libspdm_requester_encap_challenge_auth_case2),
+        cmocka_unit_test(req_encap_challenge_auth_case2),
         /* connection_state Check*/
-        cmocka_unit_test(test_libspdm_requester_encap_challenge_auth_case3),
-        cmocka_unit_test(test_libspdm_requester_encap_challenge_auth_case4),
-        cmocka_unit_test(test_libspdm_requester_encap_challenge_auth_case5),
+        cmocka_unit_test(req_encap_challenge_auth_case3),
+        cmocka_unit_test(req_encap_challenge_auth_case4),
+        cmocka_unit_test(req_encap_challenge_auth_case5),
         /* Success Case, use provisioned public key (slot 0xFF) */
-        cmocka_unit_test(test_libspdm_requester_encap_challenge_auth_case6),
+        cmocka_unit_test(req_encap_challenge_auth_case6),
         /* Success Case: V1.3 get a correct context field */
-        cmocka_unit_test(test_libspdm_requester_encap_challenge_auth_case7),
+        cmocka_unit_test(req_encap_challenge_auth_case7),
         /* The key usage bit mask is not set, failed Case*/
-        cmocka_unit_test(test_libspdm_requester_encap_challenge_auth_case8),
+        cmocka_unit_test(req_encap_challenge_auth_case8),
     };
 
     libspdm_test_context_t test_context = {
@@ -589,7 +589,7 @@ int libspdm_requester_encap_challenge_auth_test_main(void)
 
     libspdm_setup_test_context(&test_context);
 
-    return cmocka_run_group_tests(spdm_requester_challenge_auth_tests,
+    return cmocka_run_group_tests(test_cases,
                                   libspdm_unit_test_group_setup,
                                   libspdm_unit_test_group_teardown);
 }

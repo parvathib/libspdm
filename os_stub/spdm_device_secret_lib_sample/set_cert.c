@@ -29,35 +29,23 @@ bool g_in_trusted_environment = false;
 bool g_set_cert_is_busy = false;
 
 #if LIBSPDM_ENABLE_CAPABILITY_SET_CERT_CAP
-bool libspdm_is_in_trusted_environment(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
-    void *spdm_context
-#endif
-    )
+bool libspdm_is_in_trusted_environment(void *spdm_context)
 {
     return g_in_trusted_environment;
 }
 
 bool libspdm_write_certificate_to_nvm(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
     void *spdm_context,
-#endif
     uint8_t slot_id, const void * cert_chain,
     size_t cert_chain_size,
-    uint32_t base_hash_algo, uint32_t base_asym_algo
-#if LIBSPDM_SET_CERT_CSR_PARAMS
-    , bool *need_reset, bool *is_busy
-#endif /* LIBSPDM_SET_CERT_CSR_PARAMS */
-    )
+    uint32_t base_hash_algo, uint32_t base_asym_algo, uint32_t pqc_asym_algo,
+    bool *need_reset, bool *is_busy)
 {
-#if LIBSPDM_SET_CERT_CSR_PARAMS
     if (g_set_cert_is_busy) {
         *is_busy = true;
 
         return false;
-    } else
-#endif /* LIBSPDM_SET_CERT_CSR_PARAMS */
-    {
+    } else {
     #if defined(_WIN32) || (defined(__clang__) && (defined (LIBSPDM_CPU_AARCH64) || \
         defined(LIBSPDM_CPU_ARM)))
         FILE *fp_out;
@@ -107,8 +95,6 @@ bool libspdm_write_certificate_to_nvm(
                 printf("Unable to open file %s\n", file_name);
                 return false;
             }
-
-            close(fp_out);
         }
 
         close(fp_out);

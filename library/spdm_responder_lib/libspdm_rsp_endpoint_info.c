@@ -98,8 +98,13 @@ libspdm_return_t libspdm_get_response_endpoint_info(libspdm_context_t *spdm_cont
 
     if ((spdm_request->request_attributes &
          SPDM_GET_ENDPOINT_INFO_REQUEST_ATTRIBUTE_SIGNATURE_REQUESTED) != 0) {
-        signature_size = libspdm_get_asym_signature_size(
-            spdm_context->connection_info.algorithm.base_asym_algo);
+        if (spdm_context->connection_info.algorithm.pqc_asym_algo != 0) {
+            signature_size = libspdm_get_pqc_asym_signature_size(
+                spdm_context->connection_info.algorithm.pqc_asym_algo);
+        } else {
+            signature_size = libspdm_get_asym_signature_size(
+                spdm_context->connection_info.algorithm.base_asym_algo);
+        }
         if (request_size <
             sizeof(spdm_get_endpoint_info_request_t) +
             SPDM_NONCE_SIZE) {
@@ -191,7 +196,7 @@ libspdm_return_t libspdm_get_response_endpoint_info(libspdm_context_t *spdm_cont
 
     if ((spdm_request->request_attributes &
          SPDM_GET_ENDPOINT_INFO_REQUEST_ATTRIBUTE_SIGNATURE_REQUESTED) != 0) {
-        if(!libspdm_get_random_number(SPDM_NONCE_SIZE, ptr)) {
+        if (!libspdm_get_random_number(SPDM_NONCE_SIZE, ptr)) {
             libspdm_reset_message_e(spdm_context, session_info);
             return libspdm_generate_error_response(
                 spdm_context, SPDM_ERROR_CODE_UNSPECIFIED,
@@ -236,7 +241,8 @@ libspdm_return_t libspdm_get_response_endpoint_info(libspdm_context_t *spdm_cont
                 0, response_size, response);
         }
 
-        result = libspdm_generate_endpoint_info_signature(spdm_context, session_info, false, ptr);
+        result = libspdm_generate_endpoint_info_signature(
+            spdm_context, session_info, false, slot_id, ptr);
 
         if (!result) {
             libspdm_reset_message_e(spdm_context, session_info);

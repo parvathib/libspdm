@@ -3,10 +3,14 @@
 # this script will run one program one time, with a known good seed, to ensure it can pass the flow without any exception.
 
 cmds=(
+test_spdm_transport_tcp_encode_message
+test_spdm_transport_tcp_decode_message
 test_spdm_transport_mctp_encode_message
 test_spdm_transport_mctp_decode_message
 test_spdm_transport_pci_doe_encode_message
 test_spdm_transport_pci_doe_decode_message
+test_spdm_transport_storage_encode_message
+test_spdm_transport_storage_decode_message
 test_spdm_decode_secured_message
 test_spdm_encode_secured_message
 test_spdm_requester_encap_digests

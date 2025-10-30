@@ -8,7 +8,7 @@
 #include "internal/libspdm_requester_lib.h"
 #include "internal/libspdm_secured_message_lib.h"
 
-#if LIBSPDM_SEND_GET_ENDPOINT_INFO_SUPPORT
+#if (LIBSPDM_SEND_GET_ENDPOINT_INFO_SUPPORT) && (LIBSPDM_ENABLE_CAPABILITY_ENDPOINT_INFO_CAP)
 
 static size_t m_libspdm_local_buffer_size;
 static uint8_t m_libspdm_local_buffer[LIBSPDM_MAX_MESSAGE_IL1IL2_BUFFER_SIZE];
@@ -16,9 +16,8 @@ static uint8_t m_libspdm_local_buffer[LIBSPDM_MAX_MESSAGE_IL1IL2_BUFFER_SIZE];
 #define LIBSPDM_TEST_ENDPOINT_INFO_BUFFER_SIZE 0x20
 static uint8_t m_endpoint_info_buffer[LIBSPDM_TEST_ENDPOINT_INFO_BUFFER_SIZE];
 
-static libspdm_return_t libspdm_requester_get_endpoint_info_test_send_message(
-    void *spdm_context, size_t request_size, const void *request,
-    uint64_t timeout)
+static libspdm_return_t send_message(
+    void *spdm_context, size_t request_size, const void *request, uint64_t timeout)
 {
     libspdm_test_context_t *spdm_test_context;
     size_t header_size;
@@ -72,9 +71,8 @@ static libspdm_return_t libspdm_requester_get_endpoint_info_test_send_message(
     }
 }
 
-static libspdm_return_t libspdm_requester_get_endpoint_info_test_receive_message(
-    void *spdm_context, size_t *response_size,
-    void **response, uint64_t timeout)
+static libspdm_return_t receive_message(
+    void *spdm_context, size_t *response_size, void **response, uint64_t timeout)
 {
     libspdm_test_context_t *spdm_test_context;
     uint32_t endpoint_info_buffer_size;
@@ -145,7 +143,7 @@ static libspdm_return_t libspdm_requester_get_endpoint_info_test_receive_message
         transport_header_size = LIBSPDM_TEST_TRANSPORT_HEADER_SIZE;
         spdm_response = (void *)((uint8_t *)*response + transport_header_size);
 
-        spdm_response->header.spdm_version = SPDM_MESSAGE_VERSION_13;
+        spdm_response->header.spdm_version = SPDM_MESSAGE_VERSION_10;
         spdm_response->header.request_response_code = SPDM_ERROR;
         spdm_response->header.param1 = SPDM_ERROR_CODE_REQUEST_RESYNCH;
         spdm_response->header.param2 = 0;
@@ -278,12 +276,10 @@ static libspdm_return_t libspdm_requester_get_endpoint_info_test_receive_message
         libspdm_dump_hex(hash_data, libspdm_get_hash_size(m_libspdm_use_hash_algo));
         sig_size = libspdm_get_asym_signature_size(m_libspdm_use_asym_algo);
         libspdm_responder_data_sign(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
             spdm_context,
-#endif
             spdm_response->header.spdm_version << SPDM_VERSION_NUMBER_SHIFT_BIT,
-                SPDM_ENDPOINT_INFO,
-                m_libspdm_use_asym_algo, m_libspdm_use_hash_algo,
+                0, SPDM_ENDPOINT_INFO,
+                m_libspdm_use_asym_algo, m_libspdm_use_pqc_asym_algo, m_libspdm_use_hash_algo,
                 false, m_libspdm_local_buffer, m_libspdm_local_buffer_size,
                 ptr, &sig_size);
         ptr += sig_size;
@@ -350,12 +346,10 @@ static libspdm_return_t libspdm_requester_get_endpoint_info_test_receive_message
         libspdm_dump_hex(hash_data, libspdm_get_hash_size(m_libspdm_use_hash_algo));
         sig_size = libspdm_get_asym_signature_size(m_libspdm_use_asym_algo);
         libspdm_responder_data_sign(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
             spdm_context,
-#endif
             spdm_response->header.spdm_version << SPDM_VERSION_NUMBER_SHIFT_BIT,
-                SPDM_ENDPOINT_INFO,
-                m_libspdm_use_asym_algo, m_libspdm_use_hash_algo,
+                0, SPDM_ENDPOINT_INFO,
+                m_libspdm_use_asym_algo, m_libspdm_use_pqc_asym_algo, m_libspdm_use_hash_algo,
                 false, m_libspdm_local_buffer, m_libspdm_local_buffer_size,
                 ptr, &sig_size);
         ptr += sig_size;
@@ -563,12 +557,10 @@ static libspdm_return_t libspdm_requester_get_endpoint_info_test_receive_message
         libspdm_dump_hex(hash_data, libspdm_get_hash_size(m_libspdm_use_hash_algo));
         sig_size = libspdm_get_asym_signature_size(m_libspdm_use_asym_algo);
         libspdm_responder_data_sign(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
             spdm_context,
-#endif
             spdm_response->header.spdm_version << SPDM_VERSION_NUMBER_SHIFT_BIT,
-                SPDM_ENDPOINT_INFO,
-                m_libspdm_use_asym_algo, m_libspdm_use_hash_algo,
+                0, SPDM_ENDPOINT_INFO,
+                m_libspdm_use_asym_algo, m_libspdm_use_pqc_asym_algo, m_libspdm_use_hash_algo,
                 false, m_libspdm_local_buffer, m_libspdm_local_buffer_size,
                 ptr, &sig_size);
         ptr += sig_size;
@@ -723,12 +715,10 @@ static libspdm_return_t libspdm_requester_get_endpoint_info_test_receive_message
         libspdm_dump_hex(hash_data, libspdm_get_hash_size(m_libspdm_use_hash_algo));
         sig_size = libspdm_get_asym_signature_size(m_libspdm_use_asym_algo);
         libspdm_responder_data_sign(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
             spdm_context,
-#endif
             spdm_response->header.spdm_version << SPDM_VERSION_NUMBER_SHIFT_BIT,
-                SPDM_ENDPOINT_INFO,
-                m_libspdm_use_asym_algo, m_libspdm_use_hash_algo,
+                0, SPDM_ENDPOINT_INFO,
+                m_libspdm_use_asym_algo, m_libspdm_use_pqc_asym_algo, m_libspdm_use_hash_algo,
                 false, m_libspdm_local_buffer, m_libspdm_local_buffer_size,
                 ptr, &sig_size);
         ptr += sig_size;
@@ -795,12 +785,10 @@ static libspdm_return_t libspdm_requester_get_endpoint_info_test_receive_message
         libspdm_dump_hex(hash_data, libspdm_get_hash_size(m_libspdm_use_hash_algo));
         sig_size = libspdm_get_asym_signature_size(m_libspdm_use_asym_algo);
         libspdm_responder_data_sign(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
             spdm_context,
-#endif
             spdm_response->header.spdm_version << SPDM_VERSION_NUMBER_SHIFT_BIT,
-                SPDM_ENDPOINT_INFO,
-                m_libspdm_use_asym_algo, m_libspdm_use_hash_algo,
+                0, SPDM_ENDPOINT_INFO,
+                m_libspdm_use_asym_algo, m_libspdm_use_pqc_asym_algo, m_libspdm_use_hash_algo,
                 false, m_libspdm_local_buffer, m_libspdm_local_buffer_size,
                 ptr, &sig_size);
         ptr += sig_size;
@@ -867,12 +855,10 @@ static libspdm_return_t libspdm_requester_get_endpoint_info_test_receive_message
         libspdm_dump_hex(hash_data, libspdm_get_hash_size(m_libspdm_use_hash_algo));
         sig_size = libspdm_get_asym_signature_size(m_libspdm_use_asym_algo);
         libspdm_responder_data_sign(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
             spdm_context,
-#endif
             spdm_response->header.spdm_version << SPDM_VERSION_NUMBER_SHIFT_BIT,
-                SPDM_ENDPOINT_INFO,
-                m_libspdm_use_asym_algo, m_libspdm_use_hash_algo,
+                0, SPDM_ENDPOINT_INFO,
+                m_libspdm_use_asym_algo, m_libspdm_use_pqc_asym_algo, m_libspdm_use_hash_algo,
                 false, m_libspdm_local_buffer, m_libspdm_local_buffer_size,
                 ptr, &sig_size);
         ptr += sig_size;
@@ -922,9 +908,11 @@ static void libspdm_test_requester_get_endpoint_info_err_case1(void **state)
     spdm_context->connection_info.capability.flags = 0;
     spdm_context->connection_info.capability.flags |=
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_EP_INFO_CAP_SIG;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_e(spdm_context, NULL);
 
     spdm_context->connection_info.algorithm.base_hash_algo =
@@ -1009,9 +997,11 @@ static void libspdm_test_requester_get_endpoint_info_err_case2(void **state)
     spdm_context->connection_info.capability.flags = 0;
     spdm_context->connection_info.capability.flags |=
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_EP_INFO_CAP_SIG;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_e(spdm_context, NULL);
 
     spdm_context->connection_info.algorithm.base_hash_algo =
@@ -1098,9 +1088,11 @@ static void libspdm_test_requester_get_endpoint_info_err_case3(void **state)
     spdm_context->connection_info.capability.flags = 0;
     spdm_context->connection_info.capability.flags |=
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_EP_INFO_CAP_SIG;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
     libspdm_reset_message_e(spdm_context, NULL);
 
@@ -1188,9 +1180,11 @@ static void libspdm_test_requester_get_endpoint_info_err_case4(void **state)
     spdm_context->connection_info.capability.flags = 0;
     spdm_context->connection_info.capability.flags |=
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_EP_INFO_CAP_SIG;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
     libspdm_reset_message_e(spdm_context, NULL);
 
@@ -1277,9 +1271,11 @@ static void libspdm_test_requester_get_endpoint_info_err_case5(void **state)
     spdm_context->connection_info.capability.flags = 0;
     spdm_context->connection_info.capability.flags |=
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_EP_INFO_CAP_SIG;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
     libspdm_reset_message_e(spdm_context, NULL);
 
@@ -1368,9 +1364,11 @@ static void libspdm_test_requester_get_endpoint_info_err_case6(void **state)
     spdm_context->connection_info.capability.flags = 0;
     spdm_context->connection_info.capability.flags |=
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_EP_INFO_CAP_SIG;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
     libspdm_reset_message_e(spdm_context, NULL);
 
@@ -1459,9 +1457,11 @@ static void libspdm_test_requester_get_endpoint_info_err_case7(void **state)
     spdm_context->connection_info.capability.flags = 0;
     spdm_context->connection_info.capability.flags |=
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_EP_INFO_CAP_SIG;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
 
     spdm_context->connection_info.algorithm.base_hash_algo =
         m_libspdm_use_hash_algo;
@@ -1567,9 +1567,11 @@ static void libspdm_test_requester_get_endpoint_info_err_case8(void **state)
     spdm_context->connection_info.capability.flags = 0;
     spdm_context->connection_info.capability.flags |=
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_EP_INFO_CAP_SIG;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
     libspdm_reset_message_e(spdm_context, NULL);
 
@@ -1655,9 +1657,11 @@ static void libspdm_test_requester_get_endpoint_info_err_case9(void **state)
     spdm_context->connection_info.capability.flags = 0;
     spdm_context->connection_info.capability.flags |=
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_EP_INFO_CAP_SIG;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
     libspdm_reset_message_e(spdm_context, NULL);
 
@@ -1743,9 +1747,11 @@ static void libspdm_test_requester_get_endpoint_info_err_case10(void **state)
     spdm_context->connection_info.capability.flags = 0;
     spdm_context->connection_info.capability.flags |=
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_EP_INFO_CAP_SIG;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
     libspdm_reset_message_e(spdm_context, NULL);
 
@@ -1831,9 +1837,11 @@ static void libspdm_test_requester_get_endpoint_info_err_case11(void **state)
     spdm_context->connection_info.capability.flags = 0;
     spdm_context->connection_info.capability.flags |=
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_EP_INFO_CAP_SIG;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
     libspdm_reset_message_e(spdm_context, NULL);
 
@@ -1919,9 +1927,11 @@ static void libspdm_test_requester_get_endpoint_info_err_case12(void **state)
     spdm_context->connection_info.capability.flags = 0;
     spdm_context->connection_info.capability.flags |=
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_EP_INFO_CAP_SIG;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
     libspdm_reset_message_e(spdm_context, NULL);
 
@@ -2007,9 +2017,11 @@ static void libspdm_test_requester_get_endpoint_info_err_case13(void **state)
     spdm_context->connection_info.capability.flags = 0;
     spdm_context->connection_info.capability.flags |=
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_EP_INFO_CAP_SIG;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
     libspdm_reset_message_e(spdm_context, NULL);
 
@@ -2095,9 +2107,11 @@ static void libspdm_test_requester_get_endpoint_info_err_case14(void **state)
     spdm_context->connection_info.capability.flags = 0;
     spdm_context->connection_info.capability.flags |=
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_EP_INFO_CAP_NO_SIG; /*NO_SIG*/
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
     libspdm_reset_message_e(spdm_context, NULL);
 
@@ -2153,7 +2167,7 @@ static void libspdm_test_requester_get_endpoint_info_err_case14(void **state)
 
 /**
  * Test 15: Error case, request no signature but slot id not 0
- * Expected Behavior: get a RETURN_SUCCESS return code
+ * Expected Behavior: get a LIBSPDM_STATUS_SUCCESS return code
  **/
 static void libspdm_test_requester_get_endpoint_info_err_case15(void **state)
 {
@@ -2192,7 +2206,7 @@ static void libspdm_test_requester_get_endpoint_info_err_case15(void **state)
 
 /**
  * Test 16: Error case, request no signature but responder's slot id not 0
- * Expected Behavior: get a RETURN_SUCCESS return code
+ * Expected Behavior: get a LIBSPDM_STATUS_SUCCESS return code
  **/
 static void libspdm_test_requester_get_endpoint_info_err_case16(void **state)
 {
@@ -2231,7 +2245,7 @@ static void libspdm_test_requester_get_endpoint_info_err_case16(void **state)
 
 /**
  * Test 17: Error case, request no signature and response with wrong ep_info_length
- * Expected Behavior: get a RETURN_SUCCESS return code
+ * Expected Behavior: get a LIBSPDM_STATUS_SUCCESS return code
  **/
 static void libspdm_test_requester_get_endpoint_info_err_case17(void **state)
 {
@@ -2270,7 +2284,7 @@ static void libspdm_test_requester_get_endpoint_info_err_case17(void **state)
 
 /**
  * Test 18: Error case, request no signature but response with signature
- * Expected Behavior: get a RETURN_SUCCESS return code
+ * Expected Behavior: get a LIBSPDM_STATUS_SUCCESS return code
  **/
 static void libspdm_test_requester_get_endpoint_info_err_case18(void **state)
 {
@@ -2339,9 +2353,11 @@ static void libspdm_test_requester_get_endpoint_info_err_case19(void **state)
     spdm_context->connection_info.capability.flags = 0;
     spdm_context->connection_info.capability.flags |=
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_EP_INFO_CAP_SIG;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
     libspdm_reset_message_e(spdm_context, NULL);
 
@@ -2397,7 +2413,7 @@ static void libspdm_test_requester_get_endpoint_info_err_case19(void **state)
 
 /**
  * Test 20: Error case, input buffer ep_info_length too small.
- * Expected Behavior: get a RETURN_SUCCESS return code, with an empty transcript.message_e
+ * Expected Behavior: get a LIBSPDM_STATUS_SUCCESS return code, with an empty transcript.message_e
  **/
 static void libspdm_test_requester_get_endpoint_info_err_case20(void **state)
 {
@@ -2427,9 +2443,11 @@ static void libspdm_test_requester_get_endpoint_info_err_case20(void **state)
     spdm_context->connection_info.capability.flags = 0;
     spdm_context->connection_info.capability.flags |=
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_EP_INFO_CAP_SIG;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
     libspdm_reset_message_a(spdm_context);
     libspdm_reset_message_e(spdm_context, NULL);
 
@@ -2482,9 +2500,9 @@ static void libspdm_test_requester_get_endpoint_info_err_case20(void **state)
 #endif
 }
 
-int libspdm_requester_get_endpoint_info_error_test_main(void)
+int libspdm_req_get_endpoint_info_error_test(void)
 {
-    const struct CMUnitTest spdm_requester_get_endpoint_info_tests[] = {
+    const struct CMUnitTest test_cases[] = {
         cmocka_unit_test(libspdm_test_requester_get_endpoint_info_err_case1),
         cmocka_unit_test(libspdm_test_requester_get_endpoint_info_err_case2),
         cmocka_unit_test(libspdm_test_requester_get_endpoint_info_err_case3),
@@ -2510,13 +2528,13 @@ int libspdm_requester_get_endpoint_info_error_test_main(void)
     libspdm_test_context_t test_context = {
         LIBSPDM_TEST_CONTEXT_VERSION,
         true,
-        libspdm_requester_get_endpoint_info_test_send_message,
-        libspdm_requester_get_endpoint_info_test_receive_message,
+        send_message,
+        receive_message,
     };
 
     libspdm_setup_test_context(&test_context);
 
-    return cmocka_run_group_tests(spdm_requester_get_endpoint_info_tests,
+    return cmocka_run_group_tests(test_cases,
                                   libspdm_unit_test_group_setup,
                                   libspdm_unit_test_group_teardown);
 }

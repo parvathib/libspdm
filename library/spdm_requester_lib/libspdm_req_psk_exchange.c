@@ -75,7 +75,7 @@ bool libspdm_verify_psk_exchange_rsp_hmac(libspdm_context_t *spdm_context,
     }
 #else
     result = libspdm_calculate_th_hmac_for_exchange_rsp(
-        spdm_context, session_info, true, &hash_size, calc_hmac_data);
+        spdm_context, session_info, &hash_size, calc_hmac_data);
     if (!result) {
         return false;
     }
@@ -157,6 +157,7 @@ static libspdm_return_t libspdm_try_send_receive_psk_exchange(
     uint8_t *message;
     size_t message_size;
     size_t transport_header_size;
+    spdm_version_number_t secured_message_version;
 
     LIBSPDM_ASSERT(measurement_hash_type == SPDM_PSK_EXCHANGE_REQUEST_NO_MEASUREMENT_SUMMARY_HASH ||
                    measurement_hash_type == SPDM_PSK_EXCHANGE_REQUEST_TCB_COMPONENT_MEASUREMENT_HASH ||
@@ -283,7 +284,7 @@ static libspdm_return_t libspdm_try_send_receive_psk_exchange(
     ptr += spdm_request->psk_hint_length;
 
     if (requester_context_in == NULL) {
-        if(!libspdm_get_random_number(LIBSPDM_PSK_CONTEXT_LENGTH, ptr)) {
+        if (!libspdm_get_random_number(LIBSPDM_PSK_CONTEXT_LENGTH, ptr)) {
             libspdm_release_sender_buffer (spdm_context);
             return LIBSPDM_STATUS_LOW_ENTROPY;
         }
@@ -342,10 +343,6 @@ static libspdm_return_t libspdm_try_send_receive_psk_exchange(
         status = LIBSPDM_STATUS_INVALID_MSG_SIZE;
         goto receive_done;
     }
-    if (spdm_response->header.spdm_version != spdm_request->header.spdm_version) {
-        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
-        goto receive_done;
-    }
     if (spdm_response->header.request_response_code == SPDM_ERROR) {
         status = libspdm_handle_error_response_main(
             spdm_context, NULL, &spdm_response_size,
@@ -355,6 +352,10 @@ static libspdm_return_t libspdm_try_send_receive_psk_exchange(
             goto receive_done;
         }
     } else if (spdm_response->header.request_response_code != SPDM_PSK_EXCHANGE_RSP) {
+        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
+        goto receive_done;
+    }
+    if (spdm_response->header.spdm_version != spdm_request->header.spdm_version) {
         status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
         goto receive_done;
     }
@@ -399,7 +400,7 @@ static libspdm_return_t libspdm_try_send_receive_psk_exchange(
             goto receive_done;
         }
         status = libspdm_process_opaque_data_version_selection_data(
-            spdm_context, spdm_response->opaque_length, ptr);
+            spdm_context, spdm_response->opaque_length, ptr, &secured_message_version);
         if (LIBSPDM_STATUS_IS_ERROR(status)) {
             status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
             goto receive_done;
@@ -468,7 +469,8 @@ static libspdm_return_t libspdm_try_send_receive_psk_exchange(
 
     rsp_session_id = spdm_response->rsp_session_id;
     *session_id = libspdm_generate_session_id(req_session_id, rsp_session_id);
-    session_info = libspdm_assign_session_id(spdm_context, *session_id, true);
+    session_info = libspdm_assign_session_id(spdm_context, *session_id, secured_message_version,
+                                             true);
     if (session_info == NULL) {
         status = LIBSPDM_STATUS_SESSION_NUMBER_EXCEED;
         goto receive_done;

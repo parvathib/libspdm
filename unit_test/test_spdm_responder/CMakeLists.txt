@@ -26,29 +26,35 @@ target_sources(test_spdm_responder
         measurements.c
         measurement_extension_log.c
         respond_if_ready.c
-        key_exchange.c
-        finish.c
-        psk_exchange.c
-        psk_finish.c
-        heartbeat.c
-        key_update.c
-        end_session.c
-        vendor_response.c
+        key_exchange_rsp.c
+        finish_rsp.c
+        psk_exchange_rsp.c
+        psk_finish_rsp.c
+        heartbeat_ack.c
+        key_update_ack.c
+        end_session_ack.c
+        vendor_defined_response.c
         encap_get_certificate.c
         encap_get_digests.c
+        encap_get_endpoint_info.c
         encap_key_update.c
         encap_challenge.c
         encap_response.c
+        encap_send_event.c
+        event_ack.c
         supported_event_types.c
         subscribe_event_types_ack.c
         error_test/supported_event_types_err.c
         error_test/subscribe_event_types_ack_err.c
         error_test/vendor_response_err.c
         error_test/endpoint_info_err.c
+        error_test/encap_get_endpoint_info_err.c
+        error_test/encap_send_event_err.c
+        error_test/event_ack_err.c
         set_certificate_rsp.c
         csr.c
         receive_send.c
-        chunk_get.c
+        chunk_response.c
         chunk_send_ack.c
         key_pair_info.c
         set_key_pair_info_ack.c

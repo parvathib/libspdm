@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2022 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -31,7 +31,7 @@ static uint8_t m_libspdm_local_certificate_chain[LIBSPDM_MAX_CERT_CHAIN_SIZE];
  * Test 1: receives a valid GET_DIGESTS request message from Requester
  * Expected Behavior: produces a valid DIGESTS response message
  **/
-void libspdm_test_responder_digests_case1(void **state)
+static void rsp_digests_case1(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -88,7 +88,7 @@ void libspdm_test_responder_digests_case1(void **state)
  * Test 2:
  * Expected Behavior:
  **/
-void libspdm_test_responder_digests_case2(void **state)
+static void rsp_digests_case2(void **state)
 {
 }
 
@@ -97,7 +97,7 @@ void libspdm_test_responder_digests_case2(void **state)
  * request message (is busy) and may be able to process the request message if it is sent again in the future
  * Expected Behavior: produces an ERROR response message with error code = Busy
  **/
-void libspdm_test_responder_digests_case3(void **state)
+static void rsp_digests_case3(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -146,7 +146,7 @@ void libspdm_test_responder_digests_case3(void **state)
  * Test 4: receives a valid GET_DIGESTS request message from Requester, but Responder needs the Requester to reissue GET_VERSION to resynchronize
  * Expected Behavior: produces an ERROR response message with error code = RequestResynch
  **/
-void libspdm_test_responder_digests_case4(void **state)
+static void rsp_digests_case4(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -197,7 +197,7 @@ void libspdm_test_responder_digests_case4(void **state)
  * Test 5: receives a valid GET_DIGESTS request message from Requester, but Responder cannot produce the response message in time
  * Expected Behavior: produces an ERROR response message with error code = ResponseNotReady
  **/
-void libspdm_test_responder_digests_case5(void **state)
+static void rsp_digests_case5(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -251,7 +251,7 @@ void libspdm_test_responder_digests_case5(void **state)
  * meaning that steps GET_CAPABILITIES-CAPABILITIES and NEGOTIATE_ALGORITHMS-ALGORITHMS of the protocol were not previously completed
  * Expected Behavior: produces an ERROR response message with error code = UnexpectedRequest
  **/
-void libspdm_test_responder_digests_case6(void **state)
+static void rsp_digests_case6(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -299,7 +299,7 @@ void libspdm_test_responder_digests_case6(void **state)
  * Test 7: receives a valid GET_DIGESTS request message from Requester, but there is no local certificate chain, i.e. there is no digest to send
  * Expected Behavior: produces an ERROR response message with error code = Unspecified
  **/
-void libspdm_test_responder_digests_case7(void **state)
+static void rsp_digests_case7(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -348,7 +348,7 @@ void libspdm_test_responder_digests_case7(void **state)
  * Test 08: receives a valid GET_DIGESTS request message from Requester in a session
  * Expected Behavior: produces a valid DIGESTS response message
  **/
-void libspdm_test_responder_digests_case8(void **state)
+static void rsp_digests_case8(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -380,7 +380,8 @@ void libspdm_test_responder_digests_case8(void **state)
     spdm_context->last_spdm_request_session_id_valid = true;
     spdm_context->last_spdm_request_session_id = session_id;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init(spdm_context, session_info, session_id, true);
+    libspdm_session_info_init(spdm_context, session_info, session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_secured_message_set_session_state(
         session_info->secured_message_context,
         LIBSPDM_SESSION_STATE_ESTABLISHED);
@@ -418,7 +419,7 @@ void libspdm_test_responder_digests_case8(void **state)
  * Test 9: receives a valid GET_DIGESTS request message from Requester , set multi_key_conn_rsp to check if it responds correctly
  * Expected Behavior: produces a valid DIGESTS response message
  **/
-void libspdm_test_responder_digests_case9(void **state)
+static void rsp_digests_case9(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -505,7 +506,7 @@ void libspdm_test_responder_digests_case9(void **state)
  * Check KeyPairID CertificateInfo and KeyUsageMask
  * Expected Behavior: requester returns the status LIBSPDM_STATUS_SUCCESS
  **/
-void libspdm_test_responder_digests_case10(void **state)
+static void rsp_digests_case10(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -599,7 +600,7 @@ void libspdm_test_responder_digests_case10(void **state)
  * Test 11: GET_DIGESTS is sent when at least one certificate slot is in the reset state.
  * Expected Behavior: Responder responds with ResetRequired.
  **/
-void libspdm_test_responder_digests_case11(void **state)
+static void rsp_digests_case11(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -639,32 +640,32 @@ void libspdm_test_responder_digests_case11(void **state)
     assert_int_equal(spdm_response->header.param2, 0);
 }
 
-int libspdm_responder_digests_test_main(void)
+int libspdm_rsp_digests_test(void)
 {
-    const struct CMUnitTest spdm_responder_digests_tests[] = {
+    const struct CMUnitTest test_cases[] = {
         /* Success Case*/
-        cmocka_unit_test(libspdm_test_responder_digests_case1),
+        cmocka_unit_test(rsp_digests_case1),
         /* Can be populated with new test.*/
-        cmocka_unit_test(libspdm_test_responder_digests_case2),
+        cmocka_unit_test(rsp_digests_case2),
         /* response_state: SPDM_RESPONSE_STATE_BUSY*/
-        cmocka_unit_test(libspdm_test_responder_digests_case3),
+        cmocka_unit_test(rsp_digests_case3),
         /* response_state: LIBSPDM_RESPONSE_STATE_NEED_RESYNC*/
-        cmocka_unit_test(libspdm_test_responder_digests_case4),
+        cmocka_unit_test(rsp_digests_case4),
         #if LIBSPDM_RESPOND_IF_READY_SUPPORT
         /* response_state: LIBSPDM_RESPONSE_STATE_NOT_READY*/
-        cmocka_unit_test(libspdm_test_responder_digests_case5),
+        cmocka_unit_test(rsp_digests_case5),
         #endif /* LIBSPDM_RESPOND_IF_READY_SUPPORT */
         /* connection_state Check*/
-        cmocka_unit_test(libspdm_test_responder_digests_case6),
+        cmocka_unit_test(rsp_digests_case6),
         /* No digest to send*/
-        cmocka_unit_test(libspdm_test_responder_digests_case7),
+        cmocka_unit_test(rsp_digests_case7),
         /* Success Case in a session*/
-        cmocka_unit_test(libspdm_test_responder_digests_case8),
+        cmocka_unit_test(rsp_digests_case8),
         /* Set multi_key_conn_rsp to check if it responds correctly */
-        cmocka_unit_test(libspdm_test_responder_digests_case9),
+        cmocka_unit_test(rsp_digests_case9),
         /* Check KeyPairID CertificateInfo and KeyUsageMask*/
-        cmocka_unit_test(libspdm_test_responder_digests_case10),
-        cmocka_unit_test(libspdm_test_responder_digests_case11),
+        cmocka_unit_test(rsp_digests_case10),
+        cmocka_unit_test(rsp_digests_case11),
     };
 
     libspdm_test_context_t test_context = {
@@ -674,7 +675,7 @@ int libspdm_responder_digests_test_main(void)
 
     libspdm_setup_test_context(&test_context);
 
-    return cmocka_run_group_tests(spdm_responder_digests_tests,
+    return cmocka_run_group_tests(test_cases,
                                   libspdm_unit_test_group_setup,
                                   libspdm_unit_test_group_teardown);
 }

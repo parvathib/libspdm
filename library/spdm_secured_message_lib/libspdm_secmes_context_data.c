@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2024 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -112,6 +112,7 @@ void libspdm_secured_message_set_algorithms(void *spdm_secured_message_context,
                                             const spdm_version_number_t secured_message_version,
                                             uint32_t base_hash_algo,
                                             uint16_t dhe_named_group,
+                                            uint32_t kem_alg,
                                             uint16_t aead_cipher_suite,
                                             uint16_t key_schedule)
 {
@@ -122,13 +123,19 @@ void libspdm_secured_message_set_algorithms(void *spdm_secured_message_context,
     secured_message_context->secured_message_version = secured_message_version;
     secured_message_context->base_hash_algo = base_hash_algo;
     secured_message_context->dhe_named_group = dhe_named_group;
+    secured_message_context->kem_alg = kem_alg;
     secured_message_context->aead_cipher_suite = aead_cipher_suite;
     secured_message_context->key_schedule = key_schedule;
 
     secured_message_context->hash_size =
         libspdm_get_hash_size(secured_message_context->base_hash_algo);
-    secured_message_context->dhe_key_size = libspdm_get_dhe_pub_key_size(
-        secured_message_context->dhe_named_group);
+    if (kem_alg != 0) {
+        secured_message_context->shared_key_size = libspdm_get_kem_shared_secret_size(
+            secured_message_context->kem_alg);
+    } else {
+        secured_message_context->shared_key_size = libspdm_get_dhe_shared_secret_size(
+            secured_message_context->dhe_named_group);
+    }
     secured_message_context->aead_key_size = libspdm_get_aead_key_size(
         secured_message_context->aead_cipher_suite);
     secured_message_context->aead_iv_size = libspdm_get_aead_iv_size(
@@ -181,29 +188,20 @@ void libspdm_secured_message_set_sequence_number_endian (
     secured_message_context->sequence_number_endian = endian_value;
 }
 
-/**
- * Import the DHE Secret to an SPDM secured message context.
- *
- * @param  spdm_secured_message_context    A pointer to the SPDM secured message context.
- * @param  dhe_secret                    Indicate the DHE secret.
- * @param  dhe_secret_size                The size in bytes of the DHE secret.
- *
- * @retval RETURN_SUCCESS  DHE Secret is imported.
- */
-bool libspdm_secured_message_import_dhe_secret(void *spdm_secured_message_context,
-                                               const void *dhe_secret,
-                                               size_t dhe_secret_size)
+bool libspdm_secured_message_import_shared_secret(void *spdm_secured_message_context,
+                                                  const void *shared_secret,
+                                                  size_t shared_secret_size)
 {
     libspdm_secured_message_context_t *secured_message_context;
 
     secured_message_context = spdm_secured_message_context;
-    if (dhe_secret_size > secured_message_context->dhe_key_size) {
+    if (shared_secret_size > secured_message_context->shared_key_size) {
         return false;
     }
-    secured_message_context->dhe_key_size = dhe_secret_size;
-    libspdm_copy_mem(secured_message_context->master_secret.dhe_secret,
-                     sizeof(secured_message_context->master_secret.dhe_secret),
-                     dhe_secret, dhe_secret_size);
+    secured_message_context->shared_key_size = shared_secret_size;
+    libspdm_copy_mem(secured_message_context->master_secret.shared_secret,
+                     sizeof(secured_message_context->master_secret.shared_secret),
+                     shared_secret, shared_secret_size);
     return true;
 }
 
@@ -238,15 +236,6 @@ void libspdm_secured_message_clear_export_master_secret(void *spdm_secured_messa
                      sizeof(secured_message_context->export_master_secret));
 }
 
-/**
- * Export the session_keys from an SPDM secured message context.
- *
- * @param  spdm_secured_message_context    A pointer to the SPDM secured message context.
- * @param  session_keys                  Indicate the buffer to store the session_keys in libspdm_secure_session_keys_struct_t.
- * @param  session_keys_size              The size in bytes of the session_keys in libspdm_secure_session_keys_struct_t.
- *
- * @retval RETURN_SUCCESS  session_keys are exported.
- */
 bool libspdm_secured_message_export_session_keys(void *spdm_secured_message_context,
                                                  void *session_keys,
                                                  size_t *session_keys_size)
@@ -269,7 +258,7 @@ bool libspdm_secured_message_export_session_keys(void *spdm_secured_message_cont
     session_keys_struct = session_keys;
     session_keys_struct->version = LIBSPDM_SECURE_SESSION_KEYS_STRUCT_VERSION;
     session_keys_struct->aead_key_size = (uint32_t)secured_message_context->aead_key_size;
-    session_keys_struct->aead_iv_size =  (uint32_t)secured_message_context->aead_iv_size;
+    session_keys_struct->aead_iv_size = (uint32_t)secured_message_context->aead_iv_size;
 
     ptr = (void *)(session_keys_struct + 1);
     libspdm_copy_mem(ptr,
@@ -305,19 +294,9 @@ bool libspdm_secured_message_export_session_keys(void *spdm_secured_message_cont
     return true;
 }
 
-/**
- * Import the session_keys from an SPDM secured message context.
- *
- * @param  spdm_secured_message_context    A pointer to the SPDM secured message context.
- * @param  session_keys                  Indicate the buffer to store the session_keys in libspdm_secure_session_keys_struct_t.
- * @param  session_keys_size              The size in bytes of the session_keys in libspdm_secure_session_keys_struct_t.
- *
- * @retval RETURN_SUCCESS  session_keys are imported.
- */
-bool
-libspdm_secured_message_import_session_keys(void *spdm_secured_message_context,
-                                            const void *session_keys,
-                                            size_t session_keys_size)
+bool libspdm_secured_message_import_session_keys(void *spdm_secured_message_context,
+                                                 const void *session_keys,
+                                                 size_t session_keys_size)
 {
     libspdm_secured_message_context_t *secured_message_context;
     size_t struct_size;

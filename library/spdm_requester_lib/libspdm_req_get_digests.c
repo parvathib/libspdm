@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2024 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -143,10 +143,6 @@ static libspdm_return_t libspdm_try_get_digest(libspdm_context_t *spdm_context,
         status = LIBSPDM_STATUS_INVALID_MSG_SIZE;
         goto receive_done;
     }
-    if (spdm_response->header.spdm_version != spdm_request->header.spdm_version) {
-        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
-        goto receive_done;
-    }
     if (spdm_response->header.request_response_code == SPDM_ERROR) {
         status = libspdm_handle_error_response_main(
             spdm_context, session_id,
@@ -156,6 +152,10 @@ static libspdm_return_t libspdm_try_get_digest(libspdm_context_t *spdm_context,
             goto receive_done;
         }
     } else if (spdm_response->header.request_response_code != SPDM_DIGESTS) {
+        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
+        goto receive_done;
+    }
+    if (spdm_response->header.spdm_version != spdm_request->header.spdm_version) {
         status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
         goto receive_done;
     }
@@ -174,6 +174,7 @@ static libspdm_return_t libspdm_try_get_digest(libspdm_context_t *spdm_context,
     if (spdm_request->header.spdm_version >= SPDM_MESSAGE_VERSION_13) {
         LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "supported_slot_mask - 0x%02x\n",
                        spdm_response->header.param1));
+        /* If bit is set in ProvisionedSlotMask then it must also be set in SupportedSlotMask. */
         if ((spdm_response->header.param1 & spdm_response->header.param2) !=
             spdm_response->header.param2) {
             status = LIBSPDM_STATUS_INVALID_MSG_FIELD;

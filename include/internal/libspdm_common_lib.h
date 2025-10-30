@@ -25,7 +25,7 @@
 #include "hal/library/eventlib.h"
 #include "hal/library/cryptlib.h"
 
-#define INVALID_SESSION_ID 0
+#define INVALID_SESSION_ID LIBSPDM_INVALID_SESSION_ID
 /* The SPDM specification does not limit the values of CTExponent and RDTExponent.
  * libspdm artificially limits their values to 31, which corresponds to approximately 35 minutes
  * for CT and RDT. If an endpoint takes longer than 35 minutes to generate an SPDM message then
@@ -48,6 +48,7 @@ typedef struct {
     uint64_t rtt;
     uint32_t st1;
     uint32_t flags;
+    uint16_t ext_flags;
     uint32_t data_transfer_size;
     uint32_t sender_data_transfer_size;
     uint32_t max_spdm_msg_size;
@@ -66,6 +67,10 @@ typedef struct {
     uint16_t aead_cipher_suite;
     uint16_t req_base_asym_alg;
     uint16_t key_schedule;
+    uint32_t pqc_asym_algo;
+    uint32_t req_pqc_asym_alg;
+    uint32_t kem_alg;
+    bool pqc_first;
 } libspdm_device_algorithm_t;
 
 typedef struct {
@@ -112,12 +117,11 @@ typedef struct {
     /* Responder policy*/
     bool basic_mut_auth_requested;
     uint8_t mut_auth_requested;
+    bool mandatory_mut_auth;
     uint8_t heartbeat_period;
 
     /*The device role*/
     bool is_requester;
-
-    uint8_t total_key_pairs;
 } libspdm_local_context_t;
 
 typedef struct {
@@ -128,7 +132,6 @@ typedef struct {
     spdm_version_number_t version;
     libspdm_device_capability_t capability;
     libspdm_device_algorithm_t algorithm;
-    spdm_version_number_t secured_message_version;
 
     /* Peer digests buffer */
     uint8_t peer_provisioned_slot_mask;
@@ -171,7 +174,7 @@ typedef struct {
 
 /*
  * +--------------------------+------------------------------------------+---------+
- * | DIGESTS 1.3              | 4 + (H [+ 4]) * SlotNum = [36, 548]      | [1, 18] |
+ * | DIGESTS 1.4              | 4 + (H [+ 4]) * SlotNum = [36, 548]      | [1, 18] |
  * +--------------------------+------------------------------------------+---------+
  * It is for multi-key.
  */
@@ -188,70 +191,76 @@ typedef struct {
 
 /*
  * +--------------------------+------------------------------------------+---------+
- * | GET_DIGESTS 1.3          | 4                                        | 1       |
- * | DIGESTS 1.3              | 4 + (H [+ 4]) * SlotNum = [36, 548]      | [1, 18] |
+ * | GET_DIGESTS 1.4          | 4                                        | 1       |
+ * | DIGESTS 1.4              | 4 + (H [+ 4]) * SlotNum = [36, 548]      | [1, 18] |
  * +--------------------------+------------------------------------------+---------+
- * | GET_CERTIFICATE 1.3      | 8                                        | 1       |
- * | CERTIFICATE 1.3          | 8 + PortionLen                           | [1, ]   |
+ * | GET_CERTIFICATE 1.4      | 16                                       | 1       |
+ * | CERTIFICATE 1.4          | 16 + PortionLen                          | [1, ]   |
  * +--------------------------+------------------------------------------+---------+
  */
-#define LIBSPDM_MAX_MESSAGE_B_BUFFER_SIZE (24 + \
+#define LIBSPDM_MAX_MESSAGE_B_BUFFER_SIZE (40 + \
                                            (LIBSPDM_MAX_HASH_SIZE + 4) * SPDM_MAX_SLOT_COUNT + \
                                            LIBSPDM_MAX_CERT_CHAIN_SIZE)
 
 /*
  * +--------------------------+------------------------------------------+---------+
- * | CHALLENGE 1.3            | 44                                       | 1       |
- * | CHALLENGE_AUTH 1.3       | 46 + H * 2 + S [+ O] = [166, 678]        | [6, 23] |
+ * | CHALLENGE 1.4            | 44                                       | 1       |
+ * | CHALLENGE_AUTH 1.4       | 46 + H * 2 + S [+ O] = [166, 678]        | [6, 23] |
  * +--------------------------+------------------------------------------+---------+
  */
 #define LIBSPDM_MAX_MESSAGE_C_BUFFER_SIZE (90 + \
                                            LIBSPDM_MAX_HASH_SIZE * 2 + \
-                                           LIBSPDM_MAX_ASYM_KEY_SIZE + SPDM_MAX_OPAQUE_DATA_SIZE)
+                                           LIBSPDM_RSP_SIGNATURE_DATA_MAX_SIZE + \
+                                           SPDM_MAX_OPAQUE_DATA_SIZE)
 
 /*
  * +--------------------------+------------------------------------------+---------+
- * | GET_MEASUREMENTS 1.3     | 13 + Nonce (0 or 32)                     | 1       |
- * | MEASUREMENTS 1.3         | 50 + MeasRecLen (+ S) [+ O] = [106, 554] | [4, 19] |
+ * | GET_MEASUREMENTS 1.4     | 13 + Nonce (0 or 32)                     | 1       |
+ * | MEASUREMENTS 1.4         | 50 + MeasRecLen (+ S) [+ O] = [106, 554] | [4, 19] |
  * +--------------------------+------------------------------------------+---------+
  */
 #define LIBSPDM_MAX_MESSAGE_M_BUFFER_SIZE (63 + SPDM_NONCE_SIZE + \
                                            LIBSPDM_MAX_MEASUREMENT_RECORD_SIZE + \
-                                           LIBSPDM_MAX_ASYM_KEY_SIZE + SPDM_MAX_OPAQUE_DATA_SIZE)
+                                           LIBSPDM_RSP_SIGNATURE_DATA_MAX_SIZE + \
+                                           SPDM_MAX_OPAQUE_DATA_SIZE)
 
 /*
  * +--------------------------+------------------------------------------+---------+
- * | KEY_EXCHANGE 1.3         | 42 + D [+ O] = [106, 554]                | [4, 19] |
- * | KEY_EXCHANGE_RSP 1.3     | 42 + D + H + S (+ H) [+ O] = [234, 1194] | [8, 40] |
+ * | KEY_EXCHANGE 1.4         | 42 + D [+ O] = [106, 554]                | [4, 19] |
+ * | KEY_EXCHANGE_RSP 1.4     | 42 + D + H + S (+ H) [+ O] = [234, 1194] | [8, 40] |
  * +--------------------------+------------------------------------------+---------+
- * | PSK_EXCHANGE 1.3         | 12 [+ PSKHint] + R [+ O] = 44            | 2       |
- * | PSK_EXCHANGE_RSP 1.3     | 12 + R + H (+ H) [+ O] = [108, 172]      | [4, 6]  |
+ * | PSK_EXCHANGE 1.4         | 12 [+ PSKHint] + R [+ O] = 44            | 2       |
+ * | PSK_EXCHANGE_RSP 1.4     | 12 + R + H (+ H) [+ O] = [108, 172]      | [4, 6]  |
  * +--------------------------+------------------------------------------+---------+
  */
-#define LIBSPDM_MAX_MESSAGE_K_BUFFER_SIZE (84 + LIBSPDM_MAX_DHE_KEY_SIZE * 2 + \
-                                           LIBSPDM_MAX_HASH_SIZE * 2 + LIBSPDM_MAX_ASYM_KEY_SIZE + \
+#define LIBSPDM_MAX_MESSAGE_K_BUFFER_SIZE (84 + LIBSPDM_REQ_EXCHANGE_DATA_MAX_SIZE + \
+                                           LIBSPDM_RSP_EXCHANGE_DATA_MAX_SIZE + \
+                                           LIBSPDM_MAX_HASH_SIZE * 2 + \
+                                           LIBSPDM_RSP_SIGNATURE_DATA_MAX_SIZE + \
                                            SPDM_MAX_OPAQUE_DATA_SIZE * 2)
 
 /*
  * +--------------------------+------------------------------------------+---------+
- * | FINISH 1.3               | 4 (+ S) + H = [100, 580]                 | [4, 20] |
- * | FINISH_RSP 1.3           | 4 (+ H) = [36, 69]                       | [1, 3]  |
+ * | FINISH 1.4               | 6 (+ S) + H [+ O] = [100, 580]           | [4, 20] |
+ * | FINISH_RSP 1.4           | 6 (+ H) [+ O] = [36, 69]                 | [1, 3]  |
  * +--------------------------+------------------------------------------+---------+
- * | PSK_FINISH 1.3           | 4 + H = [36, 68]                         | [1, 3]  |
- * | PSK_FINISH_RSP 1.3       | 4                                        | 1       |
+ * | PSK_FINISH 1.4           | 6 + H [+ O] = [36, 68]                   | [1, 3]  |
+ * | PSK_FINISH_RSP 1.4       | 6 [+ O]                                  | 1       |
  * +--------------------------+------------------------------------------+---------+
  */
-#define LIBSPDM_MAX_MESSAGE_F_BUFFER_SIZE (8 + LIBSPDM_MAX_HASH_SIZE * 2 + \
-                                           LIBSPDM_MAX_ASYM_KEY_SIZE)
+#define LIBSPDM_MAX_MESSAGE_F_BUFFER_SIZE (12 + LIBSPDM_MAX_HASH_SIZE * 2 + \
+                                           LIBSPDM_REQ_SIGNATURE_DATA_MAX_SIZE + \
+                                           SPDM_MAX_OPAQUE_DATA_SIZE * 2)
 
 /*
  * +--------------------------+------------------------------------------+---------+
- * | GET_EP_INFO 1.3          | 8 + Nonce (0 or 32) = [8, 40]            | 1       |
- * | EP_INFO 1.3              | 12 + Nonce + EPInfoLen = [12, 1024]      | [1, 25] |
+ * | GET_EP_INFO 1.4          | 8 + Nonce (0 or 32) = [8, 40]            | 1       |
+ * | EP_INFO 1.4              | 12 + Nonce + EPInfoLen (+ S) = [12, 1024]| [1, 25] |
  * +--------------------------+------------------------------------------+---------+
  */
 #define LIBSPDM_MAX_MESSAGE_E_BUFFER_SIZE (20 + SPDM_NONCE_SIZE * 2 + \
-                                           LIBSPDM_MAX_ENDPOINT_INFO_LENGTH)
+                                           LIBSPDM_MAX_ENDPOINT_INFO_LENGTH + \
+                                           LIBSPDM_RSP_SIGNATURE_DATA_MAX_SIZE)
 
 #define LIBSPDM_MAX_MESSAGE_L1L2_BUFFER_SIZE \
     (LIBSPDM_MAX_MESSAGE_VCA_BUFFER_SIZE + LIBSPDM_MAX_MESSAGE_M_BUFFER_SIZE)
@@ -468,8 +477,8 @@ typedef struct {
 
 #define LIBSPDM_MAX_ENCAP_REQUEST_OP_CODE_SEQUENCE_COUNT 3
 typedef struct {
-    /* Valid OpCode: GET_DIGEST/GET_CERTIFICATE/CHALLENGE/KEY_UPDATE
-     * The last one is 0x00, as terminator.*/
+    /* Valid OpCode: GET_DIGEST/GET_CERTIFICATE/CHALLENGE/KEY_UPDATE/GET_ENDPOINT_INFO/SEND_EVENT
+     * The last one is 0x00, as a terminator. */
     uint8_t request_op_code_sequence[LIBSPDM_MAX_ENCAP_REQUEST_OP_CODE_SEQUENCE_COUNT + 1];
     uint8_t request_op_code_count;
     uint8_t current_request_op_code;
@@ -477,15 +486,17 @@ typedef struct {
     uint8_t req_slot_id;
     spdm_message_header_t last_encap_request_header;
     size_t last_encap_request_size;
-    uint16_t cert_chain_total_len;
+    uint32_t cert_chain_total_len;
     uint8_t req_context[SPDM_REQ_CONTEXT_SIZE];
+    uint32_t session_id;
+    bool use_large_cert_chain;
 } libspdm_encap_context_t;
 
 #if LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP
 typedef struct {
     bool chunk_in_use;
     uint8_t chunk_handle;
-    uint16_t chunk_seq_no;
+    uint32_t chunk_seq_no;
     size_t chunk_bytes_transferred;
 
     void* large_message;
@@ -521,6 +532,11 @@ typedef struct {
      * See LIBSPDM_FIPS_SELF_TEST_xxx;
      **/
     uint32_t self_test_result;
+    /**
+     * Buffer provided by integrator to hold large intermediate results.
+     **/
+    void *selftest_buffer;
+    size_t selftest_buffer_size;
 } libspdm_fips_selftest_context_t;
 #endif /* LIBSPDM_FIPS_MODE */
 
@@ -666,6 +682,10 @@ typedef struct {
 #if LIBSPDM_EVENT_RECIPIENT_SUPPORT
     libspdm_process_event_func process_event;
 #endif /* LIBSPDM_EVENT_RECIPIENT_SUPPORT */
+
+#if (LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP) && (LIBSPDM_SEND_GET_ENDPOINT_INFO_SUPPORT)
+    libspdm_get_endpoint_info_callback_func get_endpoint_info_callback;
+#endif /* (LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP) && (LIBSPDM_SEND_GET_ENDPOINT_INFO_SUPPORT) */
 } libspdm_context_t;
 
 #define LIBSPDM_CONTEXT_SIZE_WITHOUT_SECURED_CONTEXT (sizeof(libspdm_context_t))
@@ -853,7 +873,8 @@ void libspdm_reset_message_buffer_via_request_code(void *context, void *session_
  **/
 void libspdm_session_info_init(libspdm_context_t *spdm_context,
                                libspdm_session_info_t *session_info,
-                               uint32_t session_id, bool use_psk);
+                               uint32_t session_id, spdm_version_number_t secured_message_version,
+                               bool use_psk);
 
 #if LIBSPDM_ENABLE_CAPABILITY_PSK_CAP
 /**
@@ -903,6 +924,22 @@ bool libspdm_is_capabilities_flag_supported(const libspdm_context_t *spdm_contex
                                             bool is_requester,
                                             uint32_t requester_capabilities_flag,
                                             uint32_t responder_capabilities_flag);
+
+/**
+ * This function returns if a capabilities extended flag is supported in current SPDM connection.
+ *
+ * @param  spdm_context                     A pointer to the SPDM context.
+ * @param  is_requester                     Is the function called from a requester.
+ * @param  requester_capabilities_ext_flag  The requester capabilities extended flag to be checked
+ * @param  responder_capabilities_ext_flag  The responder capabilities extended flag to be checked
+ *
+ * @retval true  the capabilities extended flag is supported.
+ * @retval false the capabilities extended flag is not supported.
+ **/
+bool libspdm_is_capabilities_ext_flag_supported(const libspdm_context_t *spdm_context,
+                                                bool is_requester,
+                                                uint16_t requester_capabilities_ext_flag,
+                                                uint16_t responder_capabilities_ext_flag);
 
 /**
  * Checks the negotiated SPDM version and endpoint capabilities to determine if encapsulated
@@ -985,6 +1022,7 @@ bool libspdm_verify_peer_cert_chain_buffer_authority(libspdm_context_t *spdm_con
  **/
 bool libspdm_generate_challenge_auth_signature(libspdm_context_t *spdm_context,
                                                bool is_requester,
+                                               uint8_t slot_id,
                                                uint8_t *signature);
 
 /**
@@ -1059,6 +1097,7 @@ uint32_t libspdm_get_measurement_summary_hash_size(libspdm_context_t *spdm_conte
 bool libspdm_generate_endpoint_info_signature(libspdm_context_t *spdm_context,
                                               libspdm_session_info_t *session_info,
                                               bool is_requester,
+                                              uint8_t slot_id,
                                               uint8_t *signature);
 
 /**
@@ -1595,7 +1634,10 @@ uint32_t libspdm_generate_session_id(uint16_t req_session_id, uint16_t rsp_sessi
  *
  * @return session info associated with this new session ID.
  **/
-void *libspdm_assign_session_id(libspdm_context_t *spdm_context, uint32_t session_id, bool use_psk);
+libspdm_session_info_t *libspdm_assign_session_id(libspdm_context_t *spdm_context,
+                                                  uint32_t session_id,
+                                                  spdm_version_number_t secured_message_version,
+                                                  bool use_psk);
 
 /**
  * This function frees a session ID.
@@ -1648,7 +1690,7 @@ bool libspdm_calculate_th_hash_for_exchange(
  * @retval RETURN_SUCCESS  current TH hmac is calculated.
  */
 bool libspdm_calculate_th_hmac_for_exchange_rsp(
-    libspdm_context_t *spdm_context, void *spdm_session_info, bool is_requester,
+    libspdm_context_t *spdm_context, void *spdm_session_info,
     size_t *th_hmac_buffer_size, void *th_hmac_buffer);
 #endif
 
@@ -1832,7 +1874,7 @@ static inline bool libspdm_onehot0(uint32_t mask)
     return !mask || !(mask & (mask - 1));
 }
 
-static inline uint64_t libspdm_le_to_be_64(uint64_t value)
+static inline uint64_t libspdm_byte_swap_64(uint64_t value)
 {
     return (((value & 0x00000000000000ff) << 56) |
             ((value & 0x000000000000ff00) << 40) |
@@ -1842,6 +1884,20 @@ static inline uint64_t libspdm_le_to_be_64(uint64_t value)
             ((value & 0x0000ff0000000000) >> 24) |
             ((value & 0x00ff000000000000) >> 40) |
             ((value & 0xff00000000000000) >> 56));
+}
+
+static inline uint32_t libspdm_byte_swap_32(uint32_t value)
+{
+    return ((value & 0x000000FF) << 24) |
+           ((value & 0x0000FF00) << 8)  |
+           ((value & 0x00FF0000) >> 8)  |
+           ((value & 0xFF000000) >> 24);
+}
+
+static inline uint16_t libspdm_byte_swap_16(uint16_t value)
+{
+    return ((value & 0x00FF) << 8) |
+           ((value & 0xFF00) >> 8);
 }
 
 /**
@@ -1856,6 +1912,19 @@ static inline uint64_t libspdm_le_to_be_64(uint64_t value)
  */
 uint32_t libspdm_mask_capability_flags(libspdm_context_t *spdm_context,
                                        bool is_request_flags, uint32_t flags);
+
+/**
+ * Return capability extended flags that are masked by the negotiated SPDM version.
+ *
+ * @param  spdm_context      A pointer to the SPDM context.
+ * @param  is_request_flags  If true then flags are from a request message or Requester.
+ *                           If false then flags are from a response message or Responder.
+ * @param  ext_flags         A bitmask of capability extended flags.
+ *
+ * @return The masked capability extended flags.
+ */
+uint16_t libspdm_mask_capability_ext_flags(libspdm_context_t *spdm_context,
+                                           bool is_request_flags, uint16_t ext_flags);
 
 /**
  * Return BaseHashAlgo that is masked by the negotiated SPDM version.
@@ -1913,11 +1982,73 @@ uint32_t libspdm_mask_base_asym_algo(libspdm_context_t *spdm_context, uint32_t b
  * Check if the combination of SVH ID and VendorIDLen are legal.
  *
  * @param  id             Registry or standards body identifier (SPDM_REGISTRY_ID_*).
+ *                        Its size is two bytes due to the vendor-defined messages.
  * @param  vendor_id_len  Length, in bytes, of the VendorID field.
- *
  * @retval true  The ID and VendorIDLen are legal.
  * @retval false The ID and VendorIDLen are illegal.
  */
-bool libspdm_validate_svh_vendor_id_len(uint8_t id, uint8_t vendor_id_len);
+bool libspdm_validate_svh_vendor_id_len(uint16_t id, uint8_t vendor_id_len);
+
+/**
+ * Map slot ID to key pair ID.
+ *
+ * @param  spdm_context   A pointer to the SPDM context.
+ * @param  slot_id        The slot ID.
+ * @param  is_requester   Indicate of the key generation for a requester or a responder.
+ *
+ * @return key pair ID.
+ */
+uint8_t libspdm_slot_id_to_key_pair_id (
+    void *spdm_context,
+    uint8_t slot_id,
+    bool is_requester);
+
+#if LIBSPDM_EVENT_RECIPIENT_SUPPORT
+/**
+ * Check if the combination of DMTF EventTypeId and EventDetailLen is legal in a SEND_EVENT message.
+ *
+ * @param  event_type_id     Value of the DMTF EventTypeId.
+ * @param  event_detail_len  Size, in bytes, of EventDetail.
+ *
+ * @retval true  The EventTypeId and EventDetailLen are legal.
+ * @retval false The EventTypeId and EventDetailLen are illegal.
+ */
+bool libspdm_validate_dmtf_event_type(uint16_t event_type_id, uint16_t event_detail_len);
+
+/**
+ * Given a list of events, finds the event identified by the target EventInstanceID.
+ *
+ * @param  events_list_start         Pointer to list of events.
+ * @param  event_count               Number of events in the list.
+ * @param  target_event_instance_id  EventInstanceID to be found.
+ *
+ * @retval  NULL     Could not find the EventInstanceID.
+ * @retval  non-NULL Pointer to the event corresponding to the target EventInstanceID
+ */
+const void *libspdm_find_event_instance_id(const void *events_list_start, uint32_t event_count,
+                                           uint32_t target_event_instance_id);
+/**
+ * Parses and sends an event to the Integrator. This function shall not be called if the Integrator
+ * has not registered an event handler via libspdm_register_event_callback.
+ *
+ * @param  context          A pointer to the SPDM context.
+ * @param  session_id       Secure session identifier.
+ * @param  event_data       A pointer to the event do be parsed and sent to Integrator.
+ * @param  next_event_data  On output, returns a pointer to the next event in event_data.
+ *
+ * @retval  true   The event was successfully parsed and sent to the Integrator.
+ * @retval  false  Unable to parse the event or the Integrator returned an error for the event.
+ */
+bool libspdm_parse_and_send_event(libspdm_context_t *context, uint32_t session_id,
+                                  const void *event_data, const void **next_event_data);
+#endif /* LIBSPDM_EVENT_RECIPIENT_SUPPORT */
+
+/**
+ * Given a buffer that spans from ptr to end_ptr, check if ptr + increment is within the buffer.
+ *
+ * @retval true  There is enough space in the buffer.
+ * @retval false There is not enough space in the buffer.
+ */
+bool libspdm_check_for_space(const uint8_t *ptr, const uint8_t *end_ptr, size_t increment);
 
 #endif /* SPDM_COMMON_LIB_INTERNAL_H */

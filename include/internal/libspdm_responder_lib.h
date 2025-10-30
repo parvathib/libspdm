@@ -471,7 +471,7 @@ libspdm_return_t libspdm_get_response_encapsulated_response_ack(
     libspdm_context_t *spdm_context, size_t request_size, const void *request,
     size_t *response_size, void *response);
 
-#if (LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP) && (LIBSPDM_SEND_GET_CERTIFICATE_SUPPORT)
+#if LIBSPDM_SEND_GET_CERTIFICATE_SUPPORT
 /**
  * Get the SPDM encapsulated GET_DIGESTS request.
  *
@@ -538,7 +538,7 @@ libspdm_return_t libspdm_get_encap_request_get_certificate(libspdm_context_t *sp
 libspdm_return_t libspdm_process_encap_response_certificate(
     libspdm_context_t *spdm_context, size_t encap_response_size,
     const void *encap_response, bool *need_continue);
-#endif /* (LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP) && (LIBSPDM_SEND_GET_CERTIFICATE_SUPPORT) */
+#endif /* LIBSPDM_SEND_GET_CERTIFICATE_SUPPORT */
 
 #if (LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP) && (LIBSPDM_SEND_CHALLENGE_SUPPORT)
 /**
@@ -607,7 +607,61 @@ libspdm_return_t libspdm_get_encap_request_key_update(libspdm_context_t *spdm_co
 libspdm_return_t libspdm_process_encap_response_key_update(
     libspdm_context_t *spdm_context, size_t encap_response_size,
     const void *encap_response, bool *need_continue);
+
+#if LIBSPDM_SEND_GET_ENDPOINT_INFO_SUPPORT
+/**
+ * Get the SPDM encapsulated GET_ENDPOINT_INFO request.
+ *
+ * @param  spdm_context                 A pointer to the SPDM context.
+ * @param  encap_request_size           size in bytes of the encapsulated request data.
+ *                                      On input, it means the size in bytes of encapsulated request data buffer.
+ *                                      On output, it means the size in bytes of copied encapsulated request data buffer if RETURN_SUCCESS is returned,
+ *                                      and means the size in bytes of desired encapsulated request data buffer if RETURN_BUFFER_TOO_SMALL is returned.
+ * @param  encap_request                A pointer to the encapsulated request data.
+ *
+ * @retval RETURN_SUCCESS               The encapsulated request is returned.
+ * @retval RETURN_BUFFER_TOO_SMALL      The buffer is too small to hold the data.
+ **/
+libspdm_return_t libspdm_get_encap_request_get_endpoint_info(
+    libspdm_context_t *spdm_context,
+    size_t *encap_request_size,
+    void *encap_request);
+
+/**
+ * Process the SPDM encapsulated GET_ENDPOINT_INFO response.
+ *
+ * @param  spdm_context                 A pointer to the SPDM context.
+ * @param  encap_response_size          size in bytes of the encapsulated response data.
+ * @param  encap_response               A pointer to the encapsulated response data.
+ * @param  need_continue                Indicate if encapsulated communication need continue.
+ *
+ * @retval RETURN_SUCCESS               The encapsulated response is processed.
+ * @retval RETURN_BUFFER_TOO_SMALL      The buffer is too small to hold the data.
+ * @retval RETURN_SECURITY_VIOLATION    Any verification fails.
+ **/
+libspdm_return_t libspdm_process_encap_response_endpoint_info(
+    libspdm_context_t *spdm_context, size_t encap_response_size,
+    const void *encap_response, bool *need_continue);
+
+#endif /* LIBSPDM_SEND_GET_ENDPOINT_INFO_SUPPORT */
+
+#if LIBSPDM_ENABLE_CAPABILITY_EVENT_CAP
+libspdm_return_t libspdm_get_encap_request_send_event(
+    libspdm_context_t *spdm_context,
+    size_t *encap_request_size,
+    void *encap_request);
+
+libspdm_return_t libspdm_process_encap_response_event_ack(
+    libspdm_context_t *spdm_context, size_t encap_response_size,
+    const void *encap_response, bool *need_continue);
+#endif /* LIBSPDM_ENABLE_CAPABILITY_EVENT_CAP */
 #endif /* LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP */
+
+#if LIBSPDM_EVENT_RECIPIENT_SUPPORT
+libspdm_return_t libspdm_get_response_send_event(
+    libspdm_context_t *spdm_context, size_t request_size, const void *request,
+    size_t *response_size, void *response);
+#endif /* LIBSPDM_EVENT_RECIPIENT_SUPPORT */
 
 /**
  * Return the GET_SPDM_RESPONSE function via request code.
@@ -834,6 +888,7 @@ uint16_t libspdm_allocate_rsp_session_id(const libspdm_context_t *spdm_context, 
  * @param  data_out       A pointer to the destination buffer to store the opaque data version selection.
  **/
 void libspdm_build_opaque_data_version_selection_data(const libspdm_context_t *spdm_context,
+                                                      spdm_version_number_t secured_message_version,
                                                       size_t *data_out_size,
                                                       void *data_out);
 
@@ -845,10 +900,9 @@ void libspdm_build_opaque_data_version_selection_data(const libspdm_context_t *s
  * @param  data_in_size  Size in bytes of the data_in.
  * @param  data_in       A pointer to the buffer to store the opaque data supported version.
  **/
-libspdm_return_t
-libspdm_process_opaque_data_supported_version_data(libspdm_context_t *spdm_context,
-                                                   size_t data_in_size,
-                                                   const void *data_in);
+libspdm_return_t libspdm_process_opaque_data_supported_version_data(
+    libspdm_context_t *spdm_context, size_t data_in_size, const void *data_in,
+    spdm_version_number_t *secured_message_version);
 
 /**
  * This function verifies the finish HMAC based upon TH.
@@ -923,6 +977,7 @@ bool libspdm_generate_key_exchange_rsp_hmac(libspdm_context_t *spdm_context,
  **/
 bool libspdm_generate_key_exchange_rsp_signature(libspdm_context_t *spdm_context,
                                                  libspdm_session_info_t *session_info,
+                                                 uint8_t slot_id,
                                                  uint8_t *signature);
 
 #if LIBSPDM_ENABLE_CAPABILITY_MEAS_CAP
@@ -940,6 +995,7 @@ bool libspdm_generate_key_exchange_rsp_signature(libspdm_context_t *spdm_context
  **/
 bool libspdm_generate_measurement_signature(libspdm_context_t *spdm_context,
                                             libspdm_session_info_t *session_info,
+                                            uint8_t slot_id,
                                             uint8_t *signature);
 #endif /* LIBSPDM_ENABLE_CAPABILITY_MEAS_CAP*/
 

@@ -1,11 +1,13 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2024 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
 #include "internal/libspdm_requester_lib.h"
 #include "internal/libspdm_secured_message_lib.h"
+
+#if (LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP) || (LIBSPDM_ENABLE_CAPABILITY_PSK_CAP)
 
 #pragma pack(1)
 typedef struct {
@@ -26,10 +28,6 @@ typedef struct {
  *                                     false means the operation is UPDATE_ALL_KEYS.
  * @param  key_updated                   true means the operation is to verify key(s).
  *                                     false means the operation is to update and verify key(s).
- *
- * @retval RETURN_SUCCESS               The keys of the session are updated.
- * @retval RETURN_DEVICE_ERROR          A device error occurs when communicates with the device.
- * @retval RETURN_SECURITY_VIOLATION    Any verification fails.
  **/
 static libspdm_return_t libspdm_try_key_update(libspdm_context_t *spdm_context,
                                                uint32_t session_id,
@@ -76,7 +74,7 @@ static libspdm_return_t libspdm_try_key_update(libspdm_context_t *spdm_context,
 
     libspdm_reset_message_buffer_via_request_code(spdm_context, session_info, SPDM_KEY_UPDATE);
 
-    if(!(*key_updated)) {
+    if (!(*key_updated)) {
 
         /* Update key*/
 
@@ -101,8 +99,8 @@ static libspdm_return_t libspdm_try_key_update(libspdm_context_t *spdm_context,
         }
         spdm_request->header.param2 = 0;
 
-        if(!libspdm_get_random_number(sizeof(spdm_request->header.param2),
-                                      &spdm_request->header.param2)) {
+        if (!libspdm_get_random_number(sizeof(spdm_request->header.param2),
+                                       &spdm_request->header.param2)) {
             libspdm_release_sender_buffer (spdm_context);
             return LIBSPDM_STATUS_LOW_ENTROPY;
         }
@@ -246,8 +244,8 @@ static libspdm_return_t libspdm_try_key_update(libspdm_context_t *spdm_context,
     spdm_request->header.request_response_code = SPDM_KEY_UPDATE;
     spdm_request->header.param1 = SPDM_KEY_UPDATE_OPERATIONS_TABLE_VERIFY_NEW_KEY;
     spdm_request->header.param2 = 1;
-    if(!libspdm_get_random_number(sizeof(spdm_request->header.param2),
-                                  &spdm_request->header.param2)) {
+    if (!libspdm_get_random_number(sizeof(spdm_request->header.param2),
+                                   &spdm_request->header.param2)) {
         libspdm_release_sender_buffer (spdm_context);
         return LIBSPDM_STATUS_LOW_ENTROPY;
     }
@@ -349,3 +347,5 @@ libspdm_return_t libspdm_key_update(void *spdm_context, uint32_t session_id,
 
     return status;
 }
+
+#endif /* (LIBSPDM_ENABLE_CAPABILITY_KEY_EX_CAP) || (LIBSPDM_ENABLE_CAPABILITY_PSK_CAP) */

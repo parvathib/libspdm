@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2022 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -27,7 +27,7 @@ typedef struct {
 static size_t m_libspdm_local_buffer_size;
 static uint8_t m_libspdm_local_buffer[LIBSPDM_MAX_MESSAGE_VCA_BUFFER_SIZE];
 
-static libspdm_return_t libspdm_requester_negotiate_algorithms_test_send_message(
+static libspdm_return_t send_message(
     void *spdm_context, size_t request_size, const void *request, uint64_t timeout)
 {
     libspdm_test_context_t *spdm_test_context;
@@ -134,9 +134,8 @@ static libspdm_return_t libspdm_requester_negotiate_algorithms_test_send_message
     }
 }
 
-static libspdm_return_t libspdm_requester_negotiate_algorithm_test_receive_message(
-    void *spdm_context, size_t *response_size,
-    void **response, uint64_t timeout)
+static libspdm_return_t receive_message(
+    void *spdm_context, size_t *response_size, void **response, uint64_t timeout)
 {
     libspdm_test_context_t *spdm_test_context;
 
@@ -3112,9 +3111,9 @@ static void libspdm_test_requester_negotiate_algorithms_error_case43(void** stat
     assert_int_equal(status, LIBSPDM_STATUS_INVALID_MSG_FIELD);
 }
 
-int libspdm_requester_negotiate_algorithms_error_test_main(void)
+int libspdm_req_negotiate_algorithms_error_test(void)
 {
-    const struct CMUnitTest spdm_requester_negotiate_algorithms_tests[] = {
+    const struct CMUnitTest test_cases[] = {
         cmocka_unit_test(libspdm_test_requester_negotiate_algorithms_error_case1),
         cmocka_unit_test(libspdm_test_requester_negotiate_algorithms_error_case2),
         cmocka_unit_test(libspdm_test_requester_negotiate_algorithms_error_case3),
@@ -3166,13 +3165,13 @@ int libspdm_requester_negotiate_algorithms_error_test_main(void)
     libspdm_test_context_t test_context = {
         LIBSPDM_TEST_CONTEXT_VERSION,
         true,
-        libspdm_requester_negotiate_algorithms_test_send_message,
-        libspdm_requester_negotiate_algorithm_test_receive_message,
+        send_message,
+        receive_message,
     };
 
     libspdm_setup_test_context(&test_context);
 
-    return cmocka_run_group_tests(spdm_requester_negotiate_algorithms_tests,
+    return cmocka_run_group_tests(test_cases,
                                   libspdm_unit_test_group_setup,
                                   libspdm_unit_test_group_teardown);
 }

@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2022 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 #include "spdm_unit_test.h"
@@ -26,7 +26,7 @@ size_t m_spdm_get_certificate_response2_size = sizeof(m_spdm_get_certificate_res
  * Test 1: Normal case, request a certificate chain
  * Expected Behavior: receives a valid certificate chain with the correct number of Certificate messages
  **/
-void test_spdm_responder_encap_get_certificate_case1(void **state)
+static void rsp_encap_get_certificate_case1(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -53,12 +53,16 @@ void test_spdm_responder_encap_get_certificate_case1(void **state)
                                             SPDM_VERSION_NUMBER_SHIFT_BIT;
     spdm_context->connection_info.capability.flags |=
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_CERT_CAP;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
-    libspdm_x509_get_cert_from_cert_chain((uint8_t *)data + sizeof(spdm_cert_chain_t) + hash_size,
-                                          data_size - sizeof(spdm_cert_chain_t) - hash_size, 0,
-                                          &root_cert, &root_cert_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
+    if (!libspdm_x509_get_cert_from_cert_chain(
+            (uint8_t *)data + sizeof(spdm_cert_chain_t) + hash_size,
+            data_size - sizeof(spdm_cert_chain_t) - hash_size, 0, &root_cert, &root_cert_size)) {
+        assert(false);
+    }
     libspdm_dump_hex(
         root_cert,
         root_cert_size);
@@ -120,7 +124,7 @@ void test_spdm_responder_encap_get_certificate_case1(void **state)
  * Test 2: force responder to send an ERROR message with code SPDM_ERROR_CODE_INVALID_REQUEST
  * Expected Behavior: get a RETURN_DEVICE_ERROR, with no CERTIFICATE messages received (checked in transcript.message_b buffer)
  **/
-void test_spdm_responder_encap_get_certificate_case2(void **state)
+static void rsp_encap_get_certificate_case2(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -143,12 +147,16 @@ void test_spdm_responder_encap_get_certificate_case2(void **state)
         LIBSPDM_CONNECTION_STATE_AFTER_DIGESTS;
     spdm_context->connection_info.capability.flags |=
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_CERT_CAP;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
-    libspdm_x509_get_cert_from_cert_chain((uint8_t *)data + sizeof(spdm_cert_chain_t) + hash_size,
-                                          data_size - sizeof(spdm_cert_chain_t) - hash_size, 0,
-                                          &root_cert, &root_cert_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
+    if (!libspdm_x509_get_cert_from_cert_chain(
+            (uint8_t *)data + sizeof(spdm_cert_chain_t) + hash_size,
+            data_size - sizeof(spdm_cert_chain_t) - hash_size, 0, &root_cert, &root_cert_size)) {
+        assert(false);
+    }
     spdm_context->local_context.peer_root_cert_provision_size[0] =
         root_cert_size;
     spdm_context->local_context.peer_root_cert_provision[0] = root_cert;
@@ -178,7 +186,7 @@ void test_spdm_responder_encap_get_certificate_case2(void **state)
  * total_responder_cert_chain_buffer_length.
  * Expected Behavior:returns a status of RETURN_DEVICE_ERROR.
  **/
-void test_spdm_responder_encap_get_certificate_case3(void **state)
+static void rsp_encap_get_certificate_case3(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -205,12 +213,16 @@ void test_spdm_responder_encap_get_certificate_case3(void **state)
                                             SPDM_VERSION_NUMBER_SHIFT_BIT;
     spdm_context->connection_info.capability.flags |=
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_CERT_CAP;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
-    libspdm_x509_get_cert_from_cert_chain((uint8_t *)data + sizeof(spdm_cert_chain_t) + hash_size,
-                                          data_size - sizeof(spdm_cert_chain_t) - hash_size, 0,
-                                          &root_cert, &root_cert_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
+    if (!libspdm_x509_get_cert_from_cert_chain(
+            (uint8_t *)data + sizeof(spdm_cert_chain_t) + hash_size,
+            data_size - sizeof(spdm_cert_chain_t) - hash_size, 0, &root_cert, &root_cert_size)) {
+        assert(false);
+    }
     libspdm_dump_hex(
         root_cert,
         root_cert_size);
@@ -273,7 +285,7 @@ void test_spdm_responder_encap_get_certificate_case3(void **state)
  * Test 4: Fail case, request a certificate chain, responder return portion_length > spdm_request.length.
  * Expected Behavior:returns a status of RETURN_DEVICE_ERROR.
  **/
-void test_spdm_responder_encap_get_certificate_case4(void **state)
+static void rsp_encap_get_certificate_case4(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -300,12 +312,16 @@ void test_spdm_responder_encap_get_certificate_case4(void **state)
                                             SPDM_VERSION_NUMBER_SHIFT_BIT;
     spdm_context->connection_info.capability.flags |=
         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_CERT_CAP;
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
-    libspdm_x509_get_cert_from_cert_chain((uint8_t *)data + sizeof(spdm_cert_chain_t) + hash_size,
-                                          data_size - sizeof(spdm_cert_chain_t) - hash_size, 0,
-                                          &root_cert, &root_cert_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
+    if (!libspdm_x509_get_cert_from_cert_chain(
+            (uint8_t *)data + sizeof(spdm_cert_chain_t) + hash_size,
+            data_size - sizeof(spdm_cert_chain_t) - hash_size, 0, &root_cert, &root_cert_size)) {
+        assert(false);
+    }
     libspdm_dump_hex(
         root_cert,
         root_cert_size);
@@ -368,7 +384,7 @@ void test_spdm_responder_encap_get_certificate_case4(void **state)
  * Expected Behavior: CertModel is GenericCert model and slot 0 , returns a status of RETURN_DEVICE_ERROR.
  * Expected Behavior: CertModel Value of 0 and certificate chain is valid, returns a status of RETURN_DEVICE_ERROR.
  **/
-void test_spdm_responder_encap_get_certificate_case5(void **state)
+static void rsp_encap_get_certificate_case5(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -401,12 +417,16 @@ void test_spdm_responder_encap_get_certificate_case5(void **state)
     spdm_context->connection_info.algorithm.req_base_asym_alg =
         m_libspdm_use_req_asym_algo;
 
-    libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
-                                                    m_libspdm_use_asym_algo, &data,
-                                                    &data_size, &hash, &hash_size);
-    libspdm_x509_get_cert_from_cert_chain((uint8_t *)data + sizeof(spdm_cert_chain_t) + hash_size,
-                                          data_size - sizeof(spdm_cert_chain_t) - hash_size, 0,
-                                          &root_cert, &root_cert_size);
+    if (!libspdm_read_responder_public_certificate_chain(m_libspdm_use_hash_algo,
+                                                         m_libspdm_use_asym_algo, &data,
+                                                         &data_size, &hash, &hash_size)) {
+        assert(false);
+    }
+    if (!libspdm_x509_get_cert_from_cert_chain(
+            (uint8_t *)data + sizeof(spdm_cert_chain_t) + hash_size,
+            data_size - sizeof(spdm_cert_chain_t) - hash_size, 0, &root_cert, &root_cert_size)) {
+        assert(false);
+    }
 
     spdm_context->local_context.peer_root_cert_provision_size[0] = root_cert_size;
     spdm_context->local_context.peer_root_cert_provision[0] = root_cert;
@@ -571,22 +591,22 @@ void test_spdm_responder_encap_get_certificate_case5(void **state)
     m_libspdm_local_certificate_chain_size = 0;
 }
 
-int spdm_responder_encap_get_certificate_test_main(void)
+int spdm_rsp_encap_get_certificate_test(void)
 {
-    const struct CMUnitTest spdm_responder_certificate_tests[] = {
+    const struct CMUnitTest test_cases[] = {
         /* Success Case*/
-        cmocka_unit_test(test_spdm_responder_encap_get_certificate_case1),
+        cmocka_unit_test(rsp_encap_get_certificate_case1),
         /* Bad request size ,remaining length is 0*/
-        cmocka_unit_test(test_spdm_responder_encap_get_certificate_case2),
+        cmocka_unit_test(rsp_encap_get_certificate_case2),
         /* Error response: SPDM_ERROR_CODE_INVALID_REQUEST*/
-        cmocka_unit_test(test_spdm_responder_encap_get_certificate_case2),
+        cmocka_unit_test(rsp_encap_get_certificate_case2),
         /* Fail response: spdm_request.offset + spdm_response.portion_length + spdm_response.remainder_length !=
          * total_responder_cert_chain_buffer_length.*/
-        cmocka_unit_test(test_spdm_responder_encap_get_certificate_case3),
+        cmocka_unit_test(rsp_encap_get_certificate_case3),
         /* Fail response: responder return portion_length > spdm_request.length*/
-        cmocka_unit_test(test_spdm_responder_encap_get_certificate_case4),
+        cmocka_unit_test(rsp_encap_get_certificate_case4),
         /* check request attributes and response attributes*/
-        cmocka_unit_test(test_spdm_responder_encap_get_certificate_case5),
+        cmocka_unit_test(rsp_encap_get_certificate_case5),
     };
 
     libspdm_test_context_t test_context = {
@@ -596,7 +616,7 @@ int spdm_responder_encap_get_certificate_test_main(void)
 
     libspdm_setup_test_context(&test_context);
 
-    return cmocka_run_group_tests(spdm_responder_certificate_tests,
+    return cmocka_run_group_tests(test_cases,
                                   libspdm_unit_test_group_setup,
                                   libspdm_unit_test_group_teardown);
 }

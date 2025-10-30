@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2024 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -19,13 +19,14 @@ libspdm_return_t libspdm_get_encap_response_challenge_auth(
     size_t signature_size;
     uint8_t slot_id;
     uint32_t hash_size;
-    uint8_t *measurement_summary_hash;
     uint32_t measurement_summary_hash_size;
     uint8_t *ptr;
     libspdm_context_t *context;
     uint8_t auth_attribute;
     libspdm_return_t status;
     uint8_t slot_mask;
+    size_t request_context_size;
+    const void *request_context;
     uint8_t *opaque_data;
     size_t opaque_data_size;
     size_t spdm_request_size;
@@ -98,16 +99,32 @@ libspdm_return_t libspdm_get_encap_response_challenge_auth(
     libspdm_reset_message_buffer_via_request_code(context, NULL,
                                                   spdm_request->header.request_response_code);
 
-    signature_size = libspdm_get_req_asym_signature_size(
-        context->connection_info.algorithm.req_base_asym_alg);
+    if (context->connection_info.algorithm.req_pqc_asym_alg != 0) {
+        signature_size = libspdm_get_req_pqc_asym_signature_size(
+            context->connection_info.algorithm.req_pqc_asym_alg);
+    } else {
+        signature_size = libspdm_get_req_asym_signature_size(
+            context->connection_info.algorithm.req_base_asym_alg);
+    }
     hash_size = libspdm_get_hash_size(
         context->connection_info.algorithm.base_hash_algo);
+
+    /* Requester does not support measurements,
+     * hence the size of MeasurementSummaryHash is always 0. */
     measurement_summary_hash_size = 0;
 
     /* response_size should be large enough to hold a challenge response without opaque data. */
     LIBSPDM_ASSERT(*response_size >= sizeof(spdm_challenge_auth_response_t) + hash_size +
                    SPDM_NONCE_SIZE + measurement_summary_hash_size + sizeof(uint16_t) +
                    SPDM_REQ_CONTEXT_SIZE + signature_size);
+
+    if (spdm_request->header.spdm_version >= SPDM_MESSAGE_VERSION_13) {
+        request_context_size = SPDM_REQ_CONTEXT_SIZE;
+        request_context = spdm_request + 1;
+    } else {
+        request_context_size = 0;
+        request_context = NULL;
+    }
 
     libspdm_zero_mem(response, *response_size);
     spdm_response = response;
@@ -143,12 +160,11 @@ libspdm_return_t libspdm_get_encap_response_challenge_auth(
     }
     ptr += hash_size;
 
-    if(!libspdm_get_random_number(SPDM_NONCE_SIZE, ptr)) {
+    if (!libspdm_get_random_number(SPDM_NONCE_SIZE, ptr)) {
         return LIBSPDM_STATUS_LOW_ENTROPY;
     }
     ptr += SPDM_NONCE_SIZE;
 
-    measurement_summary_hash = ptr;
     ptr += measurement_summary_hash_size;
 
     opaque_data_size = *response_size - (sizeof(spdm_challenge_auth_response_t) + hash_size +
@@ -159,12 +175,11 @@ libspdm_return_t libspdm_get_encap_response_challenge_auth(
         measurement_summary_hash_size + sizeof(uint16_t);
 
     result = libspdm_encap_challenge_opaque_data(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
         spdm_context,
-#endif
         context->connection_info.version,
         slot_id,
-        measurement_summary_hash, measurement_summary_hash_size,
+        request_context_size,
+        request_context,
         opaque_data, &opaque_data_size);
     if (!result) {
         return libspdm_generate_encap_error_response(
@@ -217,7 +232,7 @@ libspdm_return_t libspdm_get_encap_response_challenge_auth(
             response_size, response);
     }
     result =
-        libspdm_generate_challenge_auth_signature(context, true, ptr);
+        libspdm_generate_challenge_auth_signature(context, true, slot_id, ptr);
     if (!result) {
         return libspdm_generate_encap_error_response(
             context, SPDM_ERROR_CODE_UNSPECIFIED,

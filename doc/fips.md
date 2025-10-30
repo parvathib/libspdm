@@ -24,18 +24,23 @@ libspdm integrator is expected to choose crypto module and support CMVP.
 | ECDHE               | [NIST.SP.800-56Ar3](https://doi.org/10.6028/NIST.SP.800-56Ar3), [rfc8446](https://www.rfc-editor.org/rfc/rfc8446) | KAT  | ECDHE-P256           |
 | HKDF                | [NIST.SP.800-56Cr2](https://doi.org/10.6028/NIST.SP.800-56Cr2), [rfc5869](https://tools.ietf.org/html/rfc5869) | KAT  | HKDF-HMAC-SHA-256    |
 | ChaCha-Poly (*) | [rfc8439](https://www.rfc-editor.org/rfc/rfc8439) | KAT | not FIPS approved yet |
-| SM3 (*) | [GB/T 32905-2016,GM/T 0004-2012](http://www.gmbz.org.cn/upload/2018-07-24/1532401392982079739.pdf), [ISO/IEC 10118-3:2018](https://www.iso.org/standard/67116.html) | KAT | not FIPS approved yet |
-| SM4-GCM (*) | [GB/T 32907-2016,GM/T 0002-2012](http://www.gmbz.org.cn/upload/2018-04-04/1522788048733065051.pdf), [ISO/IEC 18033-3:2010/Amd 1:2021](https://www.iso.org/standard/81564.html), [rfc8998](https://tools.ietf.org/html/rfc8998) | KAT | not FIPS approved yet |
-| SM2-digital-signature (\*) <br> SM2-key-exchange (\*) | [GB/T 32918.1-2016,GM/T 0003.1-2012](http://www.gmbz.org.cn/upload/2018-07-24/1532401673134070738.pdf), [GB/T 32918.2-2016,GM/T 0003.2-2012](http://www.gmbz.org.cn/upload/2018-07-24/1532401673138056311.pdf), [GB/T 32918.3-2016,GM/T 0003.3-2012](http://www.gmbz.org.cn/upload/2018-07-24/1532401673149005052.pdf), <br> [GB/T 32918.4-2016,GM/T 0003.4-2012](http://www.gmbz.org.cn/upload/2018-07-24/1532401673367034870.pdf), [GB/T 32918.5-2016,GM/T 0003.5-2012](http://www.gmbz.org.cn/upload/2018-07-24/1532401863206085511.pdf), [ISO/IEC 14888-3:2018](https://www.iso.org/standard/76382.html) | KAT | not FIPS approved yet |
+| SM3 (*) | [GB/T 32905-2016, GM/T 0004-2012](http://www.gmbz.org.cn/main/postDetail.html?id=20241118111047), [ISO/IEC 10118-3:2018](https://www.iso.org/standard/67116.html) | KAT | not FIPS approved yet |
+| SM4-GCM (*) | [GB/T 32907-2016, GM/T 0002-2012](http://www.gmbz.org.cn/main/postDetail.html?id=20250123174734), [ISO/IEC 18033-3:2010/Amd 1:2021](https://www.iso.org/standard/81564.html), [rfc8998](https://tools.ietf.org/html/rfc8998) | KAT | not FIPS approved yet |
+| SM2-digital-signature (\*) <br> SM2-key-exchange (\*) | [GB/T 32918-2016, GM/T 0003-2012](http://www.gmbz.org.cn/main/postDetail.html?id=20241118111410), [ISO/IEC 14888-3:2018](https://www.iso.org/standard/76382.html) | KAT | not FIPS approved yet |
 | SPDM-Key-Schedule (*) | [DMTF-DSP0274](https://www.dmtf.org/dsp/DSP0274)          | KAT  | not FIPS approved yet |
+| ML-KEM              | [NIST.FIPS.203](https://doi.org/10.6028/NIST.FIPS.203)   | KAT  | ML-KEM-1024 |
+| ML-DSA              | [NIST.FIPS.204](https://doi.org/10.6028/NIST.FIPS.204)   | KAT  | ML-DSA-87 |
+| SLH-DSA             | [NIST.FIPS.205](https://doi.org/10.6028/NIST.FIPS.2054)  | KAT  | SLH-DSA-SHA2-128s |
 
 The test maybe Known Answer Test (KAT) or Pairwise Consistency Test (PCT).
 
 The Test Vector (KAT) can be found at [CAVP-Testing](https://csrc.nist.gov/Projects/Cryptographic-Algorithm-Validation-Program/Component-Testing) and [Cryptographic Standards and Guidelines](https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values).
 
+The latest test code and test case can be found at [Automated Cryptographic Validation Protocol (ACVP)](https://pages.nist.gov/ACVP/) [Server](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files).
+
 Reference:
- * [NIST.SP.800-140Cr1](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-140Cr1.pdf): CMVP Approved Security Functions
- * [NIST.SP.800-140Dr1](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-140Dr1.pdf): CMVP Approved Sensitive Security Parameter Generation and Establishment Methods
+ * [NIST.SP.800-140C](https://csrc.nist.gov/projects/cryptographic-module-validation-program/sp-800-140-series-supplemental-information/sp800-140c): CMVP Approved Security Functions
+ * [NIST.SP.800-140D](https://csrc.nist.gov/projects/cryptographic-module-validation-program/sp-800-140-series-supplemental-information/sp800-140d): CMVP Approved Sensitive Security Parameter Generation and Establishment Methods
  * [FIPS 140-3 Implementation Guide](https://csrc.nist.gov/CSRC/media/Projects/cryptographic-module-validation-program/documents/fips%20140-3/FIPS%20140-3%20IG.pdf)
  * [FIPS 140-Compliant SPDM](https://icmconference.org/wp-content/uploads/C22b-RuanX.pdf), ICMC 2022.
 
@@ -63,6 +68,9 @@ The integrator can define `LIBSPDM_FIPS_MODE=1` according to [spdm_lib_config.h]
  * `LIBSPDM_AEAD_AES_128_GCM_SUPPORT`, `LIBSPDM_AEAD_AES_256_GCM_SUPPORT`
  * `LIBSPDM_SHA256_SUPPORT`, `LIBSPDM_SHA384_SUPPORT`, `LIBSPDM_SHA512_SUPPORT`
  * `LIBSPDM_SHA3_256_SUPPORT`, `LIBSPDM_SHA3_384_SUPPORT`, `LIBSPDM_SHA3_512_SUPPORT`
+ * `LIBSPDM_ML_KEM_512_SUPPORT`, `LIBSPDM_ML_KEM_768_SUPPORT`, `LIBSPDM_ML_KEM_1024_SUPPORT`
+ * `LIBSPDM_ML_DSA_44_SUPPORT`, `LIBSPDM_ML_DSA_65_SUPPORT`, `LIBSPDM_ML_DSA_87_SUPPORT`
+ * `LIBSPDM_SLH_DSA_SHA2_128S_SUPPORT`, `LIBSPDM_SLH_DSA_SHAKE_128S_SUPPORT`, `LIBSPDM_SLH_DSA_SHA2_128F_SUPPORT`, `LIBSPDM_SLH_DSA_SHAKE_128F_SUPPORT`, `LIBSPDM_SLH_DSA_SHA2_192S_SUPPORT`, `LIBSPDM_SLH_DSA_SHAKE_192S_SUPPORT`, `LIBSPDM_SLH_DSA_SHA2_192F_SUPPORT`, `LIBSPDM_SLH_DSA_SHAKE_192F_SUPPORT`, `LIBSPDM_SLH_DSA_SHA2_256S_SUPPORT`, `LIBSPDM_SLH_DSA_SHAKE_256S_SUPPORT`, `LIBSPDM_SLH_DSA_SHA2_256F_SUPPORT`, `LIBSPDM_SLH_DSA_SHAKE_256F_SUPPORT`
 
 Below algorithms will be disabled:
  * `LIBSPDM_SM2_DSA_P256_SUPPORT`
@@ -73,7 +81,7 @@ Below algorithms will be disabled:
 
 ### FIPS approved algorithm
 
-If FIPS mode is enabled, then only FIPS-approved algorithms will be enabled, which is listed in [NIST.SP.800-140Cr1](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-140Cr1.pdf).
+If FIPS mode is enabled, then only FIPS-approved algorithms will be enabled, which is listed in [NIST.SP.800-140C](https://csrc.nist.gov/projects/cryptographic-module-validation-program/sp-800-140-series-supplemental-information/sp800-140c) and [NIST.SP.800-140D](https://csrc.nist.gov/projects/cryptographic-module-validation-program/sp-800-140-series-supplemental-information/sp800-140d).
 
 ### Key zeroization
 
@@ -107,13 +115,16 @@ The pre-shared key (PSK) is managed by the [requester-psklib](https://github.com
  * `libspdm_fips_selftest_ffdh()`
  * `libspdm_fips_selftest_ecdsa()`
  * `libspdm_fips_selftest_eddsa()`
+ * `libspdm_fips_selftest_mlkem()`
+ * `libspdm_fips_selftest_mldsa()`
+ * `libspdm_fips_selftest_slhdsa()`
 
 If any test failed, then `libspdm_fips_run_selftest()` will return false.
 
 `libspdm_fips_run_selftest()` requires `fips_selftest_context` parameter, which is initialized by `libspdm_get_fips_selftest_context_size()`, `libspdm_init_fips_selftest_context()` in [spdm_common_lib](https://github.com/DMTF/libspdm/blob/main/include/library/spdm_common_lib.h).
 
 The expected step is as follows:
-1) The integrator invokes `libspdm_get_fips_selftest_context_size()` and `libspdm_init_fips_selftest_context()` to create the FIPS selftest context.
+1) The integrator invokes `libspdm_get_fips_selftest_context_size()`, `libspdm_get_fips_selftest_buffer_size()` and `libspdm_init_fips_selftest_context()` to create the FIPS selftest context and required buffer to hold intermediate result.
 2) The integrator invokes `libspdm_fips_run_selftest()` to trigger self-test.
 3) If fail, then return.
 
@@ -124,12 +135,18 @@ The expected step is as follows:
         return NULL;
     }
     fips_selftest_context = m_fips_selftest_context;
-    libspdm_init_fips_selftest_context(fips_selftest_context);
+    fips_selftest_buffer_size = libspdm_get_fips_selftest_buffer_size();
+    fips_selftest_buffer = (void *)malloc(fips_selftest_buffer_size);
+    if (fips_selftest_buffer == NULL) {
+        return NULL;
+    }
+    libspdm_init_fips_selftest_context(fips_selftest_context, fips_selftest_buffer_size, fips_selftest_buffer);
     result = libspdm_fips_run_selftest(fips_selftest_context);
+    free(fips_selftest_buffer);
     if (!result) {
         return NULL;
     }
 #endif
 ```
 
-NOTE: If a crypto library does not support a FIPS algorithm, then the algorithm must be disabled explicitly. Otherwise `libspdm_fips_run_selftest()` will fail. For example, if the integrator links libspdm with mbedtls, then SHA3 and RdDSA related algorithms must be disabled via `LIBSPDM_SHA3_256_SUPPORT=0`, `LIBSPDM_SHA3_384_SUPPORT=0`, `LIBSPDM_SHA3_512_SUPPORT=0`, `LIBSPDM_EDDSA_ED25519_SUPPORT=0`, `LIBSPDM_EDDSA_ED448_SUPPORT=0`, because they are not supported by mbedtls yet.
+NOTE: If a crypto library does not support a FIPS algorithm, then the algorithm must be disabled explicitly. Otherwise `libspdm_fips_run_selftest()` will fail. For example, if the integrator links libspdm with mbedtls, then SHA3, RdDSA, ML-KEM, ML-DSA and SLH-DSA related algorithms must be disabled via `LIBSPDM_SHA3_256_SUPPORT=0`, `LIBSPDM_SHA3_384_SUPPORT=0`, `LIBSPDM_SHA3_512_SUPPORT=0`, `LIBSPDM_EDDSA_ED25519_SUPPORT=0`, `LIBSPDM_EDDSA_ED448_SUPPORT=0`,`LIBSPDM_ML_KEM_512_SUPPORT=0`, `LIBSPDM_ML_KEM_768_SUPPORT=0`, `LIBSPDM_ML_KEM_1024_SUPPORT=0`, `LIBSPDM_ML_DSA_44_SUPPORT=0`, `LIBSPDM_ML_DSA_65_SUPPORT=0`, `LIBSPDM_ML_DSA_87_SUPPORT=0`, `LIBSPDM_SLH_DSA_SHA2_128S_SUPPORT=0`, `LIBSPDM_SLH_DSA_SHAKE_128S_SUPPORT=0`, `LIBSPDM_SLH_DSA_SHA2_128F_SUPPORT=0`, `LIBSPDM_SLH_DSA_SHAKE_128F_SUPPORT=0`, `LIBSPDM_SLH_DSA_SHA2_192S_SUPPORT=0`, `LIBSPDM_SLH_DSA_SHAKE_192S_SUPPORT=0`, `LIBSPDM_SLH_DSA_SHA2_192F_SUPPORT=0`, `LIBSPDM_SLH_DSA_SHAKE_192F_SUPPORT=0`, `LIBSPDM_SLH_DSA_SHA2_256S_SUPPORT=0`, `LIBSPDM_SLH_DSA_SHAKE_256S_SUPPORT=0`, `LIBSPDM_SLH_DSA_SHA2_256F_SUPPORT=0`, `LIBSPDM_SLH_DSA_SHAKE_256F_SUPPORT=0`, because they are not supported by mbedtls yet.

@@ -23,7 +23,7 @@ target_sources(test_spdm_requester
         get_digests.c
         get_certificate.c
         challenge.c
-        get_event_types.c
+        get_supported_event_types.c
         subscribe_event_types.c
         get_measurements.c
         get_measurement_extension_log.c
@@ -38,16 +38,20 @@ target_sources(test_spdm_requester
         encap_challenge_auth.c
         encap_digests.c
         encap_event_ack.c
-        encap_key_update.c
+        encap_endpoint_info.c
+        encap_key_update_ack.c
         encap_request.c
+        encap_supported_event_types.c
+        encap_subscribe_event_types_ack.c
         set_certificate.c
         get_csr.c
         chunk_get.c
         chunk_send.c
-        vendor_request.c
+        vendor_defined_request.c
         get_key_pair_info.c
         set_key_pair_info.c
         get_endpoint_info.c
+        send_event.c
         error_test/get_version_err.c
         error_test/get_capabilities_err.c
         error_test/negotiate_algorithms_err.c
@@ -56,11 +60,15 @@ target_sources(test_spdm_requester
         error_test/get_measurements_err.c
         error_test/get_event_types_err.c
         error_test/subscribe_event_types_err.c
+        error_test/send_event_err.c
         error_test/vendor_request_err.c
         error_test/get_key_pair_info_err.c
         error_test/set_key_pair_info_err.c
         error_test/encap_event_ack_err.c
         error_test/get_endpoint_info_err.c
+        error_test/encap_endpoint_info_err.c
+        error_test/encap_supported_event_types_err.c
+        error_test/encap_subscribe_event_types_ack_err.c
         ${LIBSPDM_DIR}/unit_test/spdm_unit_test_common/common.c
         ${LIBSPDM_DIR}/unit_test/spdm_unit_test_common/algo.c
         ${LIBSPDM_DIR}/unit_test/spdm_unit_test_common/support.c

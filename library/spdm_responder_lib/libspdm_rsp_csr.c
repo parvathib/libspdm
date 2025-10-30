@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2024 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -155,8 +155,8 @@ libspdm_return_t libspdm_get_response_csr(libspdm_context_t *spdm_context,
 
     is_device_cert_model = false;
 
-    if((spdm_context->local_context.capability.flags &
-        SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_ALIAS_CERT_CAP) == 0) {
+    if ((spdm_context->local_context.capability.flags &
+         SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_ALIAS_CERT_CAP) == 0) {
         is_device_cert_model = true;
     }
 
@@ -211,20 +211,16 @@ libspdm_return_t libspdm_get_response_csr(libspdm_context_t *spdm_context,
         }
 
         result = libspdm_gen_csr_ex(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
             spdm_context,
-#endif
             spdm_context->connection_info.algorithm.base_hash_algo,
             spdm_context->connection_info.algorithm.base_asym_algo,
+            spdm_context->connection_info.algorithm.pqc_asym_algo,
             &need_reset, request, request_size,
             requester_info, requester_info_length,
             opaque_data, opaque_data_length,
             &csr_len, csr_p, req_cert_model,
-            &csr_tracking_tag, key_pair_id, overwrite
-#if LIBSPDM_SET_CERT_CSR_PARAMS
-            , &is_busy, &unexpected_request
-#endif
-            );
+            &csr_tracking_tag, key_pair_id, overwrite,
+            &is_busy, &unexpected_request);
 #else
         return libspdm_generate_error_response(
             spdm_context,
@@ -233,19 +229,14 @@ libspdm_return_t libspdm_get_response_csr(libspdm_context_t *spdm_context,
 #endif /*LIBSPDM_ENABLE_CAPABILITY_CSR_CAP_EX*/
     } else {
         result = libspdm_gen_csr(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
             spdm_context,
-#endif
             spdm_context->connection_info.algorithm.base_hash_algo,
             spdm_context->connection_info.algorithm.base_asym_algo,
             &need_reset, request, request_size,
             requester_info, requester_info_length,
             opaque_data, opaque_data_length,
-            &csr_len, csr_p, is_device_cert_model
-#if LIBSPDM_SET_CERT_CSR_PARAMS
-            , &is_busy, &unexpected_request
-#endif
-            );
+            &csr_len, csr_p, is_device_cert_model,
+            &is_busy, &unexpected_request);
     }
 
     LIBSPDM_ASSERT(!(is_busy && unexpected_request));

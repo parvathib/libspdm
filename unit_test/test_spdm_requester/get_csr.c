@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2022 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -111,9 +111,8 @@ void libspdm_clear_cached_csr()
     rename(file_name, new_name);
 }
 
-libspdm_return_t libspdm_requester_get_csr_test_send_message(
-    void *spdm_context, size_t request_size, const void *request,
-    uint64_t timeout)
+static libspdm_return_t send_message(
+    void *spdm_context, size_t request_size, const void *request, uint64_t timeout)
 {
     libspdm_test_context_t *spdm_test_context;
 
@@ -158,9 +157,8 @@ libspdm_return_t libspdm_requester_get_csr_test_send_message(
     }
 }
 
-libspdm_return_t libspdm_requester_get_csr_test_receive_message(
-    void *spdm_context, size_t *response_size,
-    void **response, uint64_t timeout)
+static libspdm_return_t receive_message(
+    void *spdm_context, size_t *response_size, void **response, uint64_t timeout)
 {
     libspdm_test_context_t *spdm_test_context;
     libspdm_context_t *context;
@@ -312,7 +310,7 @@ libspdm_return_t libspdm_requester_get_csr_test_receive_message(
  * Test 1: message could not be sent
  * Expected Behavior: get a RETURN_DEVICE_ERROR return code
  **/
-void libspdm_test_requester_get_csr_case1(void **state)
+static void req_get_csr_case1(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -345,9 +343,9 @@ void libspdm_test_requester_get_csr_case1(void **state)
 
 /**
  * Test 2: Successful response to get csr
- * Expected Behavior: get a RETURN_SUCCESS return code
+ * Expected Behavior: get a LIBSPDM_STATUS_SUCCESS return code
  **/
-void libspdm_test_requester_get_csr_case2(void **state)
+static void req_get_csr_case2(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -380,9 +378,9 @@ void libspdm_test_requester_get_csr_case2(void **state)
 /**
  * Test 3: Successful response to get csr,
  * with a reset required
- * Expected Behavior: get a RETURN_SUCCESS return code
+ * Expected Behavior: get a LIBSPDM_STATUS_SUCCESS return code
  **/
-void libspdm_test_requester_get_csr_case3(void **state)
+static void req_get_csr_case3(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -424,9 +422,9 @@ void libspdm_test_requester_get_csr_case3(void **state)
 
 /**
  * Test 4: Send correct req_info and opaque_data
- * Expected Behavior: get a RETURN_SUCCESS return code and determine if req_info and opaque_data are correct
+ * Expected Behavior: get a LIBSPDM_STATUS_SUCCESS return code and determine if req_info and opaque_data are correct
  **/
-void libspdm_test_requester_get_csr_case4(void **state)
+static void req_get_csr_case4(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -468,7 +466,7 @@ void libspdm_test_requester_get_csr_case4(void **state)
  * with a reset required
  * Expected Behavior: get a LIBSPDM_STATUS_RESET_REQUIRED_PEER return code and available csr_tracking_tag
  **/
-void libspdm_test_requester_get_csr_case5(void **state)
+static void req_get_csr_case5(void **state)
 {
     libspdm_test_context_t *spdm_test_context;
     libspdm_context_t *spdm_context;
@@ -507,7 +505,7 @@ void libspdm_test_requester_get_csr_case5(void **state)
  * Expected Behavior: libspdm returns LIBSPDM_STATUS_ERROR_PEER since Responder should
  *                    not produce that error message unless CERT_INSTALL_RESET_CAP is 1.
  **/
-void libspdm_test_requester_get_csr_case6(void **state)
+static void req_get_csr_case6(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -547,7 +545,7 @@ void libspdm_test_requester_get_csr_case6(void **state)
  * Test 7: Illegal combination of MULTI_KEY_CONN_RSP = true and CSRCertModel = 0.
  * Expected Behavior: returns LIBSPDM_STATUS_INVALID_PARAMETER.
  **/
-void libspdm_test_requester_get_csr_case7(void **state)
+static void req_get_csr_case7(void **state)
 {
 #if LIBSPDM_ENABLE_CAPABILITY_CSR_CAP_EX
     libspdm_return_t status;
@@ -584,29 +582,29 @@ void libspdm_test_requester_get_csr_case7(void **state)
 #endif /* LIBSPDM_ENABLE_CAPABILITY_CSR_CAP_EX */
 }
 
-int libspdm_requester_get_csr_test_main(void)
+int libspdm_req_get_csr_test(void)
 {
-    const struct CMUnitTest spdm_requester_get_csr_tests[] = {
+    const struct CMUnitTest test_cases[] = {
         /* SendRequest failed*/
-        cmocka_unit_test(libspdm_test_requester_get_csr_case1),
+        cmocka_unit_test(req_get_csr_case1),
         /* Successful response to get csr*/
-        cmocka_unit_test(libspdm_test_requester_get_csr_case2),
+        cmocka_unit_test(req_get_csr_case2),
         /* Successful response to get csr with a reset required */
-        cmocka_unit_test(libspdm_test_requester_get_csr_case3),
+        cmocka_unit_test(req_get_csr_case3),
         /* Send req_info and opaque_data Successful response to get csr */
-        cmocka_unit_test(libspdm_test_requester_get_csr_case4),
+        cmocka_unit_test(req_get_csr_case4),
         /* Successful response to libspdm_get_csr_ex with a reset required */
-        cmocka_unit_test(libspdm_test_requester_get_csr_case5),
+        cmocka_unit_test(req_get_csr_case5),
         /* Illegal ResetRequired error response. */
-        cmocka_unit_test(libspdm_test_requester_get_csr_case6),
-        cmocka_unit_test(libspdm_test_requester_get_csr_case7),
+        cmocka_unit_test(req_get_csr_case6),
+        cmocka_unit_test(req_get_csr_case7),
     };
 
     libspdm_test_context_t test_context = {
         LIBSPDM_TEST_CONTEXT_VERSION,
         true,
-        libspdm_requester_get_csr_test_send_message,
-        libspdm_requester_get_csr_test_receive_message,
+        send_message,
+        receive_message,
     };
 
     libspdm_setup_test_context(&test_context);
@@ -614,7 +612,7 @@ int libspdm_requester_get_csr_test_main(void)
     /*ensure that cached.csr exists in test_csr at the beginning*/
     libspdm_clear_cached_csr();
 
-    return cmocka_run_group_tests(spdm_requester_get_csr_tests,
+    return cmocka_run_group_tests(test_cases,
                                   libspdm_unit_test_group_setup,
                                   libspdm_unit_test_group_teardown);
 }

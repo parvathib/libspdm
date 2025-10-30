@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2024 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -34,7 +34,7 @@ libspdm_return_t libspdm_get_encap_request_challenge(libspdm_context_t *spdm_con
         spdm_request_size = sizeof(spdm_challenge_request_t) + SPDM_REQ_CONTEXT_SIZE;
     }
 
-    if(*encap_request_size < spdm_request_size) {
+    if (*encap_request_size < spdm_request_size) {
         return LIBSPDM_STATUS_INVALID_MSG_SIZE;
     }
     *encap_request_size = spdm_request_size;
@@ -46,7 +46,7 @@ libspdm_return_t libspdm_get_encap_request_challenge(libspdm_context_t *spdm_con
     spdm_request->header.param1 = spdm_context->encap_context.req_slot_id;
     spdm_request->header.param2 =
         SPDM_CHALLENGE_REQUEST_NO_MEASUREMENT_SUMMARY_HASH;
-    if(!libspdm_get_random_number(SPDM_NONCE_SIZE, spdm_request->nonce)) {
+    if (!libspdm_get_random_number(SPDM_NONCE_SIZE, spdm_request->nonce)) {
         return LIBSPDM_STATUS_LOW_ENTROPY;
     }
     LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "Encap RequesterNonce - "));
@@ -148,8 +148,13 @@ libspdm_return_t libspdm_process_encap_response_challenge_auth(
         spdm_context->encap_context.req_slot_id;
 
     hash_size = libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
-    signature_size = libspdm_get_req_asym_signature_size(
-        spdm_context->connection_info.algorithm.req_base_asym_alg);
+    if (spdm_context->connection_info.algorithm.req_pqc_asym_alg != 0) {
+        signature_size = libspdm_get_req_pqc_asym_signature_size(
+            spdm_context->connection_info.algorithm.req_pqc_asym_alg);
+    } else {
+        signature_size = libspdm_get_req_asym_signature_size(
+            spdm_context->connection_info.algorithm.req_base_asym_alg);
+    }
     measurement_summary_hash_size = 0;
 
     if (spdm_response_size <= sizeof(spdm_challenge_auth_response_t) +

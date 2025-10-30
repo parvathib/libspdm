@@ -117,7 +117,10 @@
 #define LIBSPDM_EVENT_RECIPIENT_SUPPORT 1
 #endif
 
-/* If 1 then endpoint supports sending the GET_ENDPOINT_INFO request. */
+/* If 1 then endpoint supports sending the GET_ENDPOINT_INFO request.
+ * If enabled and endpoint is a Responder then LIBSPDM_ENABLE_CAPABILITY_ENCAP_CAP
+ * must also be enabled.
+ */
 #ifndef LIBSPDM_SEND_GET_ENDPOINT_INFO_SUPPORT
 #define LIBSPDM_SEND_GET_ENDPOINT_INFO_SUPPORT 1
 #endif
@@ -193,13 +196,6 @@
  */
 #ifndef LIBSPDM_MAX_SESSION_COUNT
 #define LIBSPDM_MAX_SESSION_COUNT 4
-#endif
-
-/* This value specifies the maximum size, in bytes, of a certificate chain that can be stored in a
- * libspdm context.
- */
-#ifndef LIBSPDM_MAX_CERT_CHAIN_SIZE
-#define LIBSPDM_MAX_CERT_CHAIN_SIZE 0x2000
 #endif
 
 #ifndef LIBSPDM_MAX_MEASUREMENT_RECORD_SIZE
@@ -356,12 +352,109 @@
 #define LIBSPDM_SM3_256_SUPPORT 1
 #endif
 
+#ifndef LIBSPDM_ML_DSA_44_SUPPORT
+#define LIBSPDM_ML_DSA_44_SUPPORT 1
+#endif
+
+#ifndef LIBSPDM_ML_DSA_65_SUPPORT
+#define LIBSPDM_ML_DSA_65_SUPPORT 1
+#endif
+
+#ifndef LIBSPDM_ML_DSA_87_SUPPORT
+#define LIBSPDM_ML_DSA_87_SUPPORT 1
+#endif
+
+#ifndef LIBSPDM_SLH_DSA_SHA2_128S_SUPPORT
+#define LIBSPDM_SLH_DSA_SHA2_128S_SUPPORT 1
+#endif
+
+#ifndef LIBSPDM_SLH_DSA_SHAKE_128S_SUPPORT
+#define LIBSPDM_SLH_DSA_SHAKE_128S_SUPPORT 1
+#endif
+
+#ifndef LIBSPDM_SLH_DSA_SHA2_128F_SUPPORT
+#define LIBSPDM_SLH_DSA_SHA2_128F_SUPPORT 1
+#endif
+
+#ifndef LIBSPDM_SLH_DSA_SHAKE_128F_SUPPORT
+#define LIBSPDM_SLH_DSA_SHAKE_128F_SUPPORT 1
+#endif
+
+#ifndef LIBSPDM_SLH_DSA_SHA2_192S_SUPPORT
+#define LIBSPDM_SLH_DSA_SHA2_192S_SUPPORT 1
+#endif
+
+#ifndef LIBSPDM_SLH_DSA_SHAKE_192S_SUPPORT
+#define LIBSPDM_SLH_DSA_SHAKE_192S_SUPPORT 1
+#endif
+
+#ifndef LIBSPDM_SLH_DSA_SHA2_192F_SUPPORT
+#define LIBSPDM_SLH_DSA_SHA2_192F_SUPPORT 1
+#endif
+
+#ifndef LIBSPDM_SLH_DSA_SHAKE_192F_SUPPORT
+#define LIBSPDM_SLH_DSA_SHAKE_192F_SUPPORT 1
+#endif
+
+#ifndef LIBSPDM_SLH_DSA_SHA2_256S_SUPPORT
+#define LIBSPDM_SLH_DSA_SHA2_256S_SUPPORT 1
+#endif
+
+#ifndef LIBSPDM_SLH_DSA_SHAKE_256S_SUPPORT
+#define LIBSPDM_SLH_DSA_SHAKE_256S_SUPPORT 1
+#endif
+
+#ifndef LIBSPDM_SLH_DSA_SHA2_256F_SUPPORT
+#define LIBSPDM_SLH_DSA_SHA2_256F_SUPPORT 1
+#endif
+
+#ifndef LIBSPDM_SLH_DSA_SHAKE_256F_SUPPORT
+#define LIBSPDM_SLH_DSA_SHAKE_256F_SUPPORT 1
+#endif
+
+#ifndef LIBSPDM_ML_KEM_512_SUPPORT
+#define LIBSPDM_ML_KEM_512_SUPPORT 1
+#endif
+
+#ifndef LIBSPDM_ML_KEM_768_SUPPORT
+#define LIBSPDM_ML_KEM_768_SUPPORT 1
+#endif
+
+#ifndef LIBSPDM_ML_KEM_1024_SUPPORT
+#define LIBSPDM_ML_KEM_1024_SUPPORT 1
+#endif
+
+/* This value specifies the maximum size, in bytes, of a certificate chain that can be stored in a
+ * libspdm context.
+ */
+#ifndef LIBSPDM_MAX_CERT_CHAIN_SIZE
+/* MLDSA - 0x8000, SLHDSA - 0x28000 */
+#if ((LIBSPDM_SLH_DSA_SHA2_128S_SUPPORT) ||  \
+     (LIBSPDM_SLH_DSA_SHAKE_128S_SUPPORT) || \
+     (LIBSPDM_SLH_DSA_SHA2_128F_SUPPORT) ||  \
+     (LIBSPDM_SLH_DSA_SHAKE_128F_SUPPORT) || \
+     (LIBSPDM_SLH_DSA_SHA2_192S_SUPPORT) ||  \
+     (LIBSPDM_SLH_DSA_SHAKE_192S_SUPPORT) || \
+     (LIBSPDM_SLH_DSA_SHA2_192F_SUPPORT) ||  \
+     (LIBSPDM_SLH_DSA_SHAKE_192F_SUPPORT) || \
+     (LIBSPDM_SLH_DSA_SHA2_256S_SUPPORT) ||  \
+     (LIBSPDM_SLH_DSA_SHAKE_256S_SUPPORT) || \
+     (LIBSPDM_SLH_DSA_SHA2_256F_SUPPORT) ||  \
+     (LIBSPDM_SLH_DSA_SHAKE_256F_SUPPORT))
+#define LIBSPDM_MAX_CERT_CHAIN_SIZE 0x28000
+#elif ((LIBSPDM_ML_DSA_44_SUPPORT) || \
+       (LIBSPDM_ML_DSA_65_SUPPORT) || \
+       (LIBSPDM_ML_DSA_87_SUPPORT))
+#define LIBSPDM_MAX_CERT_CHAIN_SIZE 0x8000
+#else
+#define LIBSPDM_MAX_CERT_CHAIN_SIZE 0x2000
+#endif
+#endif
+
 /* If 1 then endpoint supports parsing X.509 certificate chains. */
 #ifndef LIBSPDM_CERT_PARSE_SUPPORT
 #define LIBSPDM_CERT_PARSE_SUPPORT 1
 #endif
-
-
 
 /*
  * MinDataTransferSize = 42
@@ -446,34 +539,6 @@
  */
 #ifndef LIBSPDM_CHECK_SPDM_CONTEXT
 #define LIBSPDM_CHECK_SPDM_CONTEXT 1
-#endif
-
-/* Enable passing the SPDM context to HAL functions.
- * This macro will be removed when libspdm 4.0 is released.
- */
-#ifndef LIBSPDM_HAL_PASS_SPDM_CONTEXT
-#define LIBSPDM_HAL_PASS_SPDM_CONTEXT 0
-#endif
-
-/* Enable passing the SessionID to functions.
- * This macro will be removed when libspdm 4.0 is released.
- */
-#ifndef LIBSPDM_PASS_SESSION_ID
-#define LIBSPDM_PASS_SESSION_ID 0
-#endif
-
-/* Enable additional checks for certificates.
- * This macro will be removed when libspdm 4.0 is released.
- */
-#ifndef LIBSPDM_ADDITIONAL_CHECK_CERT
-#define LIBSPDM_ADDITIONAL_CHECK_CERT 0
-#endif
-
-/* Enable passing additional parameters to libspdm_write_certificate_to_nvm and libspdm_gen_csr*.
- * This macro will be removed when libspdm 4.0 is released.
- */
-#ifndef LIBSPDM_SET_CERT_CSR_PARAMS
-#define LIBSPDM_SET_CERT_CSR_PARAMS 0
 #endif
 
 #endif /* SPDM_LIB_CONFIG_H */

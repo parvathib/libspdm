@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2024 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -22,11 +22,7 @@
  * @param  request_attribute            Set certificate request attributes. This field is only used for SPDM 1.3 and above.
  *                                      And the bit[0~3] of request_attribute must be 0.
  * @param  key_pair_id                  The value of this field shall be the unique key pair number identifying the desired
- *                                      asymmetric key pair to associate with SlotID .
- *
- * @retval RETURN_SUCCESS               The measurement is got successfully.
- * @retval RETURN_DEVICE_ERROR          A device error occurs when communicates with the device.
- * @retval RETURN_SECURITY_VIOLATION    Any verification fails.
+ *                                      asymmetric key pair to associate with SlotID
  **/
 static libspdm_return_t libspdm_try_set_certificate(libspdm_context_t *spdm_context,
                                                     const uint32_t *session_id, uint8_t slot_id,
@@ -185,10 +181,6 @@ static libspdm_return_t libspdm_try_set_certificate(libspdm_context_t *spdm_cont
         status = LIBSPDM_STATUS_INVALID_MSG_SIZE;
         goto receive_done;
     }
-    if (spdm_response->header.spdm_version != spdm_request->header.spdm_version) {
-        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
-        goto receive_done;
-    }
     if (spdm_response->header.request_response_code == SPDM_ERROR) {
         status = libspdm_handle_error_response_main(
             spdm_context, NULL,
@@ -198,6 +190,10 @@ static libspdm_return_t libspdm_try_set_certificate(libspdm_context_t *spdm_cont
             goto receive_done;
         }
     } else if (spdm_response->header.request_response_code != SPDM_SET_CERTIFICATE_RSP) {
+        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
+        goto receive_done;
+    }
+    if (spdm_response->header.spdm_version != spdm_request->header.spdm_version) {
         status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
         goto receive_done;
     }

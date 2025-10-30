@@ -32,10 +32,10 @@ static libspdm_return_t process_event(void *spdm_context,
                                       uint32_t event_instance_id,
                                       uint8_t svh_id,
                                       uint8_t svh_vendor_id_len,
-                                      void *svh_vendor_id,
+                                      const void *svh_vendor_id,
                                       uint16_t event_type_id,
                                       uint16_t event_detail_len,
-                                      void *event_detail)
+                                      const void *event_detail)
 {
     printf("Event Received\n");
     printf("Event Instance ID = [0x%x]\n", event_instance_id);
@@ -102,7 +102,8 @@ static void set_standard_state(libspdm_context_t *spdm_context)
     spdm_context->last_spdm_request_session_id_valid = true;
     spdm_context->last_spdm_request_session_id = m_session_id;
     session_info = &spdm_context->session_info[0];
-    libspdm_session_info_init(spdm_context, session_info, m_session_id, true);
+    libspdm_session_info_init(spdm_context, session_info, m_session_id,
+                              SECURED_SPDM_VERSION_11 << SPDM_VERSION_NUMBER_SHIFT_BIT, true);
     libspdm_secured_message_set_session_state(
         session_info->secured_message_context,
         LIBSPDM_SESSION_STATE_ESTABLISHED);
@@ -111,7 +112,7 @@ static void set_standard_state(libspdm_context_t *spdm_context)
 }
 
 /* Send exactly one event. */
-static void test_libspdm_requester_encap_event_ack_case1(void **state)
+static void req_encap_event_ack_case1(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -173,7 +174,7 @@ static void test_libspdm_requester_encap_event_ack_case1(void **state)
 }
 
 /* Send two events with in-order event instance IDs. */
-static void test_libspdm_requester_encap_event_ack_case2(void **state)
+static void req_encap_event_ack_case2(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -255,7 +256,7 @@ static void test_libspdm_requester_encap_event_ack_case2(void **state)
 }
 
 /* Send two events with out-of-order event instance IDs. */
-static void test_libspdm_requester_encap_event_ack_case3(void **state)
+static void req_encap_event_ack_case3(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -337,7 +338,7 @@ static void test_libspdm_requester_encap_event_ack_case3(void **state)
 }
 
 /* Send four events with in-order event instance IDs. */
-static void test_libspdm_requester_encap_event_ack_case4(void **state)
+static void req_encap_event_ack_case4(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -450,13 +451,13 @@ static void test_libspdm_requester_encap_event_ack_case4(void **state)
     assert_int_equal(m_event_counter, 4);
 }
 
-int libspdm_requester_encap_event_ack_test_main(void)
+int libspdm_req_encap_event_ack_test(void)
 {
-    const struct CMUnitTest spdm_requester_event_ack_tests[] = {
-        cmocka_unit_test(test_libspdm_requester_encap_event_ack_case1),
-        cmocka_unit_test(test_libspdm_requester_encap_event_ack_case2),
-        cmocka_unit_test(test_libspdm_requester_encap_event_ack_case3),
-        cmocka_unit_test(test_libspdm_requester_encap_event_ack_case4)
+    const struct CMUnitTest test_cases[] = {
+        cmocka_unit_test(req_encap_event_ack_case1),
+        cmocka_unit_test(req_encap_event_ack_case2),
+        cmocka_unit_test(req_encap_event_ack_case3),
+        cmocka_unit_test(req_encap_event_ack_case4)
     };
 
     libspdm_test_context_t test_context = {
@@ -466,7 +467,7 @@ int libspdm_requester_encap_event_ack_test_main(void)
 
     libspdm_setup_test_context(&test_context);
 
-    return cmocka_run_group_tests(spdm_requester_event_ack_tests,
+    return cmocka_run_group_tests(test_cases,
                                   libspdm_unit_test_group_setup,
                                   libspdm_unit_test_group_teardown);
 }

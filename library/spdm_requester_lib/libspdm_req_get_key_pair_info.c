@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2024 DMTF. All rights reserved.
+ *  Copyright 2024-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -20,6 +20,10 @@ typedef struct {
     uint16_t public_key_info_len;
     uint8_t assoc_cert_slot_mask;
     uint8_t public_key_info[SPDM_MAX_PUBLIC_KEY_INFO_LEN];
+    uint8_t pqc_asym_algo_cap_len;
+    uint32_t pqc_asym_algo_capabilities;
+    uint8_t current_pqc_asym_algo_len;
+    uint32_t current_pqc_asym_algo;
 } libspdm_key_pair_info_response_max_t;
 
 /**
@@ -37,6 +41,8 @@ static libspdm_return_t libspdm_try_get_key_pair_info(libspdm_context_t *spdm_co
                                                       uint16_t *current_key_usage,
                                                       uint32_t *asym_algo_capabilities,
                                                       uint32_t *current_asym_algo,
+                                                      uint32_t *pqc_asym_algo_capabilities,
+                                                      uint32_t *current_pqc_asym_algo,
                                                       uint8_t *assoc_cert_slot_mask,
                                                       uint16_t *public_key_info_len,
                                                       void *public_key_info
@@ -52,6 +58,11 @@ static libspdm_return_t libspdm_try_get_key_pair_info(libspdm_context_t *spdm_co
     size_t transport_header_size;
     libspdm_session_info_t *session_info;
     libspdm_session_state_t session_state;
+    uint8_t pqc_asym_algo_cap_len;
+    uint8_t current_pqc_asym_algo_len;
+    uint8_t *ptr;
+    uint32_t rsp_pqc_asym_algo_capabilities;
+    uint32_t rsp_current_pqc_asym_algo;
 
     /* -=[Check Parameters Phase]=- */
     if (libspdm_get_connection_version(spdm_context) < SPDM_MESSAGE_VERSION_13) {
@@ -134,10 +145,6 @@ static libspdm_return_t libspdm_try_get_key_pair_info(libspdm_context_t *spdm_co
         status = LIBSPDM_STATUS_INVALID_MSG_SIZE;
         goto receive_done;
     }
-    if (spdm_response->header.spdm_version != spdm_request->header.spdm_version) {
-        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
-        goto receive_done;
-    }
     if (spdm_response->header.request_response_code == SPDM_ERROR) {
         status = libspdm_handle_error_response_main(
             spdm_context, session_id,
@@ -147,6 +154,10 @@ static libspdm_return_t libspdm_try_get_key_pair_info(libspdm_context_t *spdm_co
             goto receive_done;
         }
     } else if (spdm_response->header.request_response_code != SPDM_KEY_PAIR_INFO) {
+        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
+        goto receive_done;
+    }
+    if (spdm_response->header.spdm_version != spdm_request->header.spdm_version) {
         status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
         goto receive_done;
     }
@@ -167,9 +178,61 @@ static libspdm_return_t libspdm_try_get_key_pair_info(libspdm_context_t *spdm_co
         status = LIBSPDM_STATUS_INVALID_MSG_SIZE;
         goto receive_done;
     }
-    spdm_response_size = sizeof(spdm_key_pair_info_response_t) + spdm_response->public_key_info_len;
+
+    rsp_pqc_asym_algo_capabilities = 0;
+    rsp_current_pqc_asym_algo = 0;
+    if (spdm_response->header.spdm_version >= SPDM_MESSAGE_VERSION_14) {
+        if (spdm_response_size < sizeof(spdm_key_pair_info_response_t) +
+            spdm_response->public_key_info_len + sizeof(uint8_t)) {
+            status = LIBSPDM_STATUS_INVALID_MSG_SIZE;
+            goto receive_done;
+        }
+        ptr = (uint8_t *)spdm_response + sizeof(spdm_key_pair_info_response_t) + spdm_response->public_key_info_len;
+
+        pqc_asym_algo_cap_len = *ptr;
+        if (spdm_response_size < sizeof(spdm_key_pair_info_response_t) +
+            spdm_response->public_key_info_len + sizeof(uint8_t) + pqc_asym_algo_cap_len + sizeof(uint8_t)) {
+            status = LIBSPDM_STATUS_INVALID_MSG_SIZE;
+            goto receive_done;
+        }
+        if (pqc_asym_algo_cap_len > sizeof(uint32_t)) {
+            pqc_asym_algo_cap_len = sizeof(uint32_t);
+        }
+        libspdm_copy_mem (&rsp_pqc_asym_algo_capabilities, sizeof(rsp_pqc_asym_algo_capabilities),
+                          ptr + sizeof(uint8_t), pqc_asym_algo_cap_len);
+
+        current_pqc_asym_algo_len = *(ptr + sizeof(uint8_t) + pqc_asym_algo_cap_len);
+        if (current_pqc_asym_algo_len > sizeof(uint32_t)) {
+            current_pqc_asym_algo_len = sizeof(uint32_t);
+        }
+        libspdm_copy_mem (&rsp_current_pqc_asym_algo, sizeof(rsp_current_pqc_asym_algo),
+                          ptr + sizeof(uint8_t) + pqc_asym_algo_cap_len + sizeof(uint8_t), current_pqc_asym_algo_len);
+
+        rsp_pqc_asym_algo_capabilities &= SPDM_KEY_PAIR_PQC_ASYM_ALGO_CAP_MASK;
+        rsp_current_pqc_asym_algo &= SPDM_KEY_PAIR_PQC_ASYM_ALGO_CAP_MASK;
+    } else {
+        spdm_response_size = sizeof(spdm_key_pair_info_response_t) + spdm_response->public_key_info_len;
+    }
 
     /* -=[Process Response Phase]=- */
+
+    /*If responder doesn't support SET_KEY_PAIR_INFO_CAP,the capabilities should be 0*/
+    if ((!libspdm_is_capabilities_flag_supported(
+             spdm_context, true, 0,
+             SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_SET_KEY_PAIR_INFO_CAP)) &&
+        ((spdm_response->capabilities & SPDM_KEY_PAIR_CAP_MASK) != 0)) {
+        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
+        goto receive_done;
+    }
+
+    *total_key_pairs = spdm_response->total_key_pairs;
+    *capabilities = spdm_response->capabilities & SPDM_KEY_PAIR_CAP_MASK;
+    if (((*capabilities & SPDM_KEY_PAIR_CAP_SHAREABLE_CAP) != 0) &&
+        ((*capabilities & SPDM_KEY_PAIR_CAP_CERT_ASSOC_CAP) == 0)) {
+        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
+        goto receive_done;
+    }
+
     *key_usage_capabilities = (spdm_response->key_usage_capabilities) & SPDM_KEY_USAGE_BIT_MASK;
     if (*key_usage_capabilities == 0) {
         status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
@@ -197,24 +260,41 @@ static libspdm_return_t libspdm_try_get_key_pair_info(libspdm_context_t *spdm_co
         goto receive_done;
     }
 
-    /*If responder doesn't support SET_KEY_PAIR_INFO_CAP,the capabilities should be 0*/
-    if ((!libspdm_is_capabilities_flag_supported(
-             spdm_context, true, 0,
-             SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_SET_KEY_PAIR_INFO_CAP)) &&
-        ((spdm_response->capabilities & SPDM_KEY_PAIR_CAP_MASK) != 0)) {
+    if (!libspdm_onehot0(rsp_current_pqc_asym_algo)) {
+        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
+        goto receive_done;
+    }
+    if ((rsp_pqc_asym_algo_capabilities | rsp_current_pqc_asym_algo) != rsp_pqc_asym_algo_capabilities) {
+        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
+        goto receive_done;
+    }
+    if ((*current_asym_algo != 0) && (rsp_current_pqc_asym_algo != 0)) {
         status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
         goto receive_done;
     }
 
-    *total_key_pairs = spdm_response->total_key_pairs;
-    *capabilities = spdm_response->capabilities & SPDM_KEY_PAIR_CAP_MASK;
+    if (pqc_asym_algo_capabilities != NULL) {
+        *pqc_asym_algo_capabilities = rsp_pqc_asym_algo_capabilities;
+    }
+    if (current_pqc_asym_algo != NULL) {
+        *current_pqc_asym_algo = rsp_current_pqc_asym_algo;
+    }
+
+    *assoc_cert_slot_mask = spdm_response->assoc_cert_slot_mask;
+    if (!libspdm_onehot0(*assoc_cert_slot_mask) &&
+        (((*capabilities & SPDM_KEY_PAIR_CAP_SHAREABLE_CAP) == 0) &&
+         (libspdm_is_capabilities_flag_supported(
+              spdm_context, true, 0,
+              SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_SET_KEY_PAIR_INFO_CAP)))) {
+        status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
+        goto receive_done;
+    }
 
     if (*public_key_info_len < spdm_response->public_key_info_len) {
         status = LIBSPDM_STATUS_BUFFER_FULL;
         goto receive_done;
     }
     *public_key_info_len = spdm_response->public_key_info_len;
-    *assoc_cert_slot_mask = spdm_response->assoc_cert_slot_mask;
 
     libspdm_copy_mem(public_key_info,
                      spdm_response->public_key_info_len,
@@ -230,6 +310,47 @@ static libspdm_return_t libspdm_try_get_key_pair_info(libspdm_context_t *spdm_co
 
 receive_done:
     libspdm_release_receiver_buffer (spdm_context);
+    return status;
+}
+
+libspdm_return_t libspdm_get_key_pair_info_with_pqc(void *spdm_context, const uint32_t *session_id,
+                                                    uint8_t key_pair_id, uint8_t *total_key_pairs,
+                                                    uint16_t *capabilities,
+                                                    uint16_t *key_usage_capabilities,
+                                                    uint16_t *current_key_usage,
+                                                    uint32_t *asym_algo_capabilities,
+                                                    uint32_t *current_asym_algo,
+                                                    uint32_t *pqc_asym_algo_capabilities,
+                                                    uint32_t *current_pqc_asym_algo,
+                                                    uint8_t *assoc_cert_slot_mask,
+                                                    uint16_t *public_key_info_len,
+                                                    void *public_key_info
+                                                    )
+{
+    libspdm_context_t *context;
+    size_t retry;
+    uint64_t retry_delay_time;
+    libspdm_return_t status;
+
+    context = spdm_context;
+    context->crypto_request = true;
+    retry = context->retry_times;
+    retry_delay_time = context->retry_delay_time;
+    do {
+        status = libspdm_try_get_key_pair_info(context, session_id, key_pair_id,
+                                               total_key_pairs, capabilities,
+                                               key_usage_capabilities, current_key_usage,
+                                               asym_algo_capabilities, current_asym_algo,
+                                               pqc_asym_algo_capabilities, current_pqc_asym_algo,
+                                               assoc_cert_slot_mask, public_key_info_len,
+                                               public_key_info);
+        if (status != LIBSPDM_STATUS_BUSY_PEER) {
+            return status;
+        }
+
+        libspdm_sleep(retry_delay_time);
+    } while (retry-- != 0);
+
     return status;
 }
 
@@ -259,6 +380,7 @@ libspdm_return_t libspdm_get_key_pair_info(void *spdm_context, const uint32_t *s
                                                total_key_pairs, capabilities,
                                                key_usage_capabilities, current_key_usage,
                                                asym_algo_capabilities, current_asym_algo,
+                                               NULL, NULL,
                                                assoc_cert_slot_mask, public_key_info_len,
                                                public_key_info);
         if (status != LIBSPDM_STATUS_BUSY_PEER) {

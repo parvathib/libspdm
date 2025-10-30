@@ -18,7 +18,10 @@ target_sources(spdm_requester_lib
         libspdm_req_encap_error.c
         libspdm_req_encap_key_update.c
         libspdm_req_encap_event_ack.c
+        libspdm_req_encap_endpoint_info.c
         libspdm_req_encap_request.c
+        libspdm_req_encap_supported_event_types.c
+        libspdm_req_encap_subscribe_event_types_ack.c
         libspdm_req_end_session.c
         libspdm_req_finish.c
         libspdm_req_get_capabilities.c
@@ -36,6 +39,7 @@ target_sources(spdm_requester_lib
         libspdm_req_negotiate_algorithms.c
         libspdm_req_psk_exchange.c
         libspdm_req_psk_finish.c
+        libspdm_req_send_event.c
         libspdm_req_send_receive.c
         libspdm_req_set_certificate.c
         libspdm_req_get_csr.c

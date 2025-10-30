@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2021-2024 DMTF. All rights reserved.
+ *  Copyright 2021-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -46,19 +46,13 @@
  * @retval  false  Failed to generate CSR.
  **/
 extern bool libspdm_gen_csr(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
     void *spdm_context,
-#endif
     uint32_t base_hash_algo, uint32_t base_asym_algo, bool *need_reset,
     const void *request, size_t request_size,
     uint8_t *requester_info, size_t requester_info_length,
     uint8_t *opaque_data, uint16_t opaque_data_length,
     size_t *csr_len, uint8_t *csr_pointer,
-    bool is_device_cert_model
-#if LIBSPDM_SET_CERT_CSR_PARAMS
-    , bool *is_busy, bool *unexpected_request
-#endif
-    );
+    bool is_device_cert_model, bool *is_busy, bool *unexpected_request);
 
 /**
  * Generate a PKCS #10 certificate signing request for SPDM versions 1.3 and higher.
@@ -112,10 +106,9 @@ extern bool libspdm_gen_csr(
 
 #if LIBSPDM_ENABLE_CAPABILITY_CSR_CAP_EX
 extern bool libspdm_gen_csr_ex(
-#if LIBSPDM_HAL_PASS_SPDM_CONTEXT
     void *spdm_context,
-#endif
-    uint32_t base_hash_algo, uint32_t base_asym_algo, bool *need_reset,
+    uint32_t base_hash_algo, uint32_t base_asym_algo, uint32_t pqc_asym_algo,
+    bool *need_reset,
     const void *request, size_t request_size,
     uint8_t *requester_info, size_t requester_info_length,
     uint8_t *opaque_data, uint16_t opaque_data_length,
@@ -123,11 +116,7 @@ extern bool libspdm_gen_csr_ex(
     uint8_t req_cert_model,
     uint8_t *req_csr_tracking_tag,
     uint8_t req_key_pair_id,
-    bool overwrite
-#if LIBSPDM_SET_CERT_CSR_PARAMS
-    , bool *is_busy, bool *unexpected_request
-#endif
-    );
+    bool overwrite, bool *is_busy, bool *unexpected_request);
 #endif /*LIBSPDM_ENABLE_CAPABILITY_CSR_CAP_EX*/
 #endif /* LIBSPDM_ENABLE_CAPABILITY_CSR_CAP */
 

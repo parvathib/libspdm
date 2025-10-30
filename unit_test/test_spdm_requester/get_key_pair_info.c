@@ -1,6 +1,6 @@
 /**
  *  Copyright Notice:
- *  Copyright 2024 DMTF. All rights reserved.
+ *  Copyright 2024-2025 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
 
@@ -19,9 +19,8 @@ uint32_t m_response_asym_algo_capabilities;
 uint32_t m_response_current_asym_algo;
 uint8_t m_response_assoc_cert_slot_mask;
 
-libspdm_return_t libspdm_requester_get_key_pair_info_test_send_message(
-    void *spdm_context, size_t request_size, const void *request,
-    uint64_t timeout)
+static libspdm_return_t send_message(
+    void *spdm_context, size_t request_size, const void *request, uint64_t timeout)
 {
     libspdm_test_context_t *spdm_test_context;
 
@@ -35,9 +34,8 @@ libspdm_return_t libspdm_requester_get_key_pair_info_test_send_message(
     }
 }
 
-libspdm_return_t libspdm_requester_get_key_pair_info_test_receive_message(
-    void *spdm_context, size_t *response_size,
-    void **response, uint64_t timeout)
+static libspdm_return_t receive_message(
+    void *spdm_context, size_t *response_size, void **response, uint64_t timeout)
 {
     libspdm_test_context_t *spdm_test_context;
 
@@ -150,7 +148,7 @@ libspdm_return_t libspdm_requester_get_key_pair_info_test_receive_message(
  * Test 1: Successful response to get key pair info
  * Expected Behavior: get a LIBSPDM_STATUS_SUCCESS return code
  **/
-void libspdm_test_requester_get_key_pair_info_case1(void **state)
+static void req_get_key_pair_info_case1(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -200,9 +198,10 @@ void libspdm_test_requester_get_key_pair_info_case1(void **state)
 }
 
 /**
- * Test 2: The collection of multiple sub-cases.
+ * Test 2: The collection of multiple sub-cases for invalid combination.
+ * Expected Behavior: get a LIBSPDM_STATUS_INVALID_MSG_FIELD return code
  **/
-void libspdm_test_requester_get_key_pair_info_case3(void **state)
+void req_get_key_pair_info_case2(void **state)
 {
     libspdm_return_t status;
     libspdm_test_context_t *spdm_test_context;
@@ -578,23 +577,25 @@ void libspdm_test_requester_get_key_pair_info_case3(void **state)
     assert_int_equal(status, LIBSPDM_STATUS_INVALID_MSG_FIELD);
 }
 
-int libspdm_requester_get_key_pair_info_test_main(void)
+int libspdm_req_get_key_pair_info_test(void)
 {
-    const struct CMUnitTest spdm_requester_get_key_pair_info_tests[] = {
+    const struct CMUnitTest test_cases[] = {
         /* Successful response to get key pair info, key_pair_id is 1*/
-        cmocka_unit_test(libspdm_test_requester_get_key_pair_info_case1),
+        cmocka_unit_test(req_get_key_pair_info_case1),
+        /* The collection of multiple sub-cases for invalid combination.*/
+        cmocka_unit_test(req_get_key_pair_info_case2),
     };
 
     libspdm_test_context_t test_context = {
         LIBSPDM_TEST_CONTEXT_VERSION,
         true,
-        libspdm_requester_get_key_pair_info_test_send_message,
-        libspdm_requester_get_key_pair_info_test_receive_message,
+        send_message,
+        receive_message,
     };
 
     libspdm_setup_test_context(&test_context);
 
-    return cmocka_run_group_tests(spdm_requester_get_key_pair_info_tests,
+    return cmocka_run_group_tests(test_cases,
                                   libspdm_unit_test_group_setup,
                                   libspdm_unit_test_group_teardown);
 }
