@@ -202,7 +202,7 @@
  * libspdm context.
  */
 #ifndef LIBSPDM_MAX_CERT_CHAIN_SIZE
-#define LIBSPDM_MAX_CERT_CHAIN_SIZE 0x1000
+#define LIBSPDM_MAX_CERT_CHAIN_SIZE 0x2000
 #endif
 
 #ifndef LIBSPDM_MAX_MEASUREMENT_RECORD_SIZE
@@ -363,8 +363,6 @@
 #ifndef LIBSPDM_CERT_PARSE_SUPPORT
 #define LIBSPDM_CERT_PARSE_SUPPORT 1
 #endif
-
-
 
 /*
  * MinDataTransferSize = 42
